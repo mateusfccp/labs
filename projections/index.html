@@ -138,6 +138,10 @@
          .pulse-ring {
              animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
          }
+
+         #map-container.dragging .country {
+             pointer-events: none;
+         }
 	</style>
     </head>
 
@@ -576,7 +580,8 @@
 
          const dragBehavior = d3.drag()
 				.on("start", () => {
-				    container.style("cursor", "grabbing");
+				    container.style("cursor", "grabbing")
+					     .classed("dragging", true);
 				    state.isDragging = true;
 				})
 				.on("drag", (event) => {
@@ -617,7 +622,8 @@
 				    saveSettings(); // Save while dragging (debounced)
 				})
 				.on("end", () => {
-				    container.style("cursor", "grab");
+				    container.style("cursor", "grab")
+					     .classed("dragging", false);
 				    state.isDragging = false;
 				});
 
