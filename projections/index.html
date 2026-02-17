@@ -25,10 +25,8 @@
              background-color: #f8fafc;
              overflow: hidden;
              user-select: none;
-             /* Prevent text selection during drag */
          }
 
-         /* Custom Range Slider Styling */
          input[type=range] {
              -webkit-appearance: none;
              background: transparent;
@@ -87,7 +85,6 @@
              stroke-width: 0.5px;
              transition: fill 0.2s;
              vector-effect: non-scaling-stroke;
-             /* Key for performance on zoom */
          }
 
          .country:hover {
@@ -104,7 +101,6 @@
 
          .tissot {
              fill: rgba(239, 68, 68, 0.1);
-             /* Red with low opacity */
              stroke: rgba(239, 68, 68, 0.4);
              stroke-width: 1px;
              pointer-events: none;
@@ -122,7 +118,6 @@
              pointer-events: none;
          }
 
-         /* Loading Animation */
          @keyframes pulse-ring {
              0% {
                  transform: scale(0.8);
@@ -278,7 +273,7 @@
                     <!-- Toggle: Sphere -->
                     <div class="flex items-center justify-between">
 			<span class="text-xs font-medium text-slate-600 flex items-center gap-2">
-                            <i data-lucide="circle" class="w-3 h-3 text-slate-400"></i> Background
+                            <i data-lucide="circle" class="w-3 h-3 text-slate-400"></i> Border
 			</span>
 			<label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="toggle-sphere" class="sr-only peer" checked>
