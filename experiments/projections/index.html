@@ -3,7 +3,7 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Projections - World Map Viewer</title>
 
     <!-- Tailwind CSS -->
@@ -77,6 +77,9 @@
         #map-container {
             cursor: grab;
             touch-action: none;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
         }
 
         #map-container:active {
@@ -394,6 +397,14 @@
             }, 500); // Debounce save by 500ms
         }
 
+
+        // on some mobile browsers (especially iOS) to yield control of the gesture.
+        const mapContainer = document.getElementById("map-container");
+        mapContainer.addEventListener("touchstart", (e) => {
+            if (e.touches.length > 1) {
+                e.preventDefault();
+            }
+        }, { passive: false });
 
         // --- D3 Selections & Setup ---
         const container = d3.select("#map-container");
