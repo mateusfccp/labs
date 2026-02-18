@@ -1,18 +1,48 @@
 import 'dart:io';
+
+import 'package:ansicolor/ansicolor.dart';
 import 'package:args/args.dart';
+import 'package:mustache_template/mustache.dart';
+import 'package:path/path.dart';
+import 'package:shelf/shelf.dart';
+import 'package:shelf/shelf_io.dart';
+import 'package:shelf_static/shelf_static.dart';
+import 'package:stream_transform/stream_transform.dart';
+import 'package:watcher/watcher.dart';
 import 'package:yaml/yaml.dart';
-import 'package:path/path.dart' as p;
+
+final _green = AnsiPen()..green();
+final _yellow = AnsiPen()..yellow();
+final _red = AnsiPen()..red();
+final _bold = AnsiPen()..white(bold: true);
 
 void main(List<String> arguments) async {
   final parser = ArgParser()
-    ..addOption('config', abbr: 'c', defaultsTo: 'labs.yaml', help: 'Path to configuration file')
-    ..addOption('template', abbr: 't', defaultsTo: 'templates/index.html', help: 'Path to template file')
-    ..addOption('output-dir', abbr: 'o', defaultsTo: 'docs', help: 'Path to output directory');
+    ..addCommand('build')
+    ..addCommand('serve');
 
-  final argResults = parser.parse(arguments);
-  final configPath = argResults['config'];
-  final templatePath = argResults['template'];
-  final outputDirName = argResults['output-dir'];
+  final results = parser.parse(arguments);
+  final command = results.command;
+
+  if (command == null) {
+    stdout.writeln(_red('Error: No command provided. Use "build" or "serve".'));
+    exit(1);
+  }
+
+  if (command.name == 'build') {
+    await _build();
+  } else if (command.name == 'serve') {
+    await _serve();
+  }
+}
+
+Future<void> _build() async {
+  stdout.writeln('Building labs...');
+
+  final configPath = 'labs.yaml';
+  final outputDirName = 'docs';
+  final templatePath = 'src/templates/index.mustache';
+  final cardTemplatePath = 'src/templates/card.mustache';
 
   final outputDir = Directory(outputDirName);
   if (outputDir.existsSync()) {
@@ -20,116 +50,168 @@ void main(List<String> arguments) async {
   }
   outputDir.createSync(recursive: true);
 
-  // 1. Read Configuration
   final configFile = File(configPath);
   if (!configFile.existsSync()) {
-    print('Error: Configuration file not found at $configPath');
+    stdout.writeln(_red('Error: Configuration file not found at $configPath'));
     exit(1);
   }
 
   final configContent = await configFile.readAsString();
   final yaml = loadYaml(configContent);
-  final experiments = yaml['experiments'] as YamlList?;
+  final experimentsYaml = yaml['experiments'] as YamlList?;
 
-  if (experiments == null) {
-    print('Warning: No experiments found in $configPath');
-    exit(0);
+  if (experimentsYaml == null) {
+    stdout.writeln(_red('Error: No experiments found in $configPath'));
+    exit(1);
   }
 
-  // 2. Validate and Scan
-  final experimentsDir = Directory('experiments');
+  final experimentsDir = Directory('src/experiments');
   if (!experimentsDir.existsSync()) {
-    print('Error: "experiments" directory not found.');
+    stdout.writeln(_red('Error: "src/experiments" directory not found.'));
     exit(1);
   }
 
   final entities = await experimentsDir.list().toList();
-  final existingApps = entities.whereType<Directory>().map((e) => 'experiments/${p.basename(e.path)}').toSet();
-  
-  // Check for configured apps that don't exist
-  for (final exp in experiments) {
-    final path = exp['path'];
-    if (!Directory(path).existsSync()) {
-      print('Warning: Configured app "$path" does not exist.');
+
+  final existingApps = {
+    for (final entity in entities)
+      if (entity is Directory) 'src/experiments/${basename(entity.path)}',
+  };
+
+  for (final experiment in experimentsYaml) {
+    final dirName = experiment['slug'];
+    final fullPath = join('src/experiments', dirName);
+    if (!Directory(fullPath).existsSync()) {
+      stdout.writeln(
+        _yellow('Warning: Configured app "$fullPath" does not exist.'),
+      );
     }
   }
 
-  // Check for existing apps that are not configured
-  final configuredPaths = experiments.map((e) => e['path']).toSet();
+  final configuredDirNames = experimentsYaml.map((e) => e['slug']).toSet();
   for (final appPath in existingApps) {
-    if (!configuredPaths.contains(appPath)) {
-       print('Warning: App "$appPath" is not listed in $configPath');
+    final dirName = basename(appPath);
+    if (!configuredDirNames.contains(dirName)) {
+      stdout.writeln(
+        _yellow('Warning: App "$appPath" is not listed in $configPath'),
+      );
     }
   }
 
-  // 3. Generate Content and Copy Apps
-  final sb = StringBuffer();
-  for (final exp in experiments) {
-    final name = exp['name'] ?? 'Unknown';
-    final path = exp['path'] as String;
-    final desc = exp['description'] ?? '';
-    final thumbPath = exp['thumbnail'] as String?;
+  final experimentsData = <Map<String, Object?>>[];
 
-    // Determine destination in docs/
-    final appDirName = p.basename(path);
-    final destPath = p.join(outputDir.path, appDirName);
+  for (final exp in experimentsYaml) {
+    final name = exp['name'] as String;
+    final slug = exp['slug'] as String;
+    final desc = exp['description'] as String;
+    final thumbName = exp['thumbnail'] as String?;
 
-    // Copy app
-    if (Directory(path).existsSync()) {
-        await _copyDirectory(Directory(path), Directory(destPath));
-    }
+    final sourcePath = join('src/experiments', slug);
+    final destPath = join(outputDir.path, slug);
 
-    // Determine thumbnail path for HTML (relative to docs root)
-    String? htmlThumbPath;
-    if (thumbPath != null) {
-        if (p.isWithin(path, thumbPath)) {
-            // If thumb is inside the app, it's already copied
-            // path: experiments/projections, thumb: experiments/projections/img.png
-            // relative: img.png
-            // html: projections/img.png
-            final relative = p.relative(thumbPath, from: path);
-            htmlThumbPath = '$appDirName/$relative';
-        } else {
-            // Logic for external thumbs if needed (not active now)
-            htmlThumbPath = thumbPath; 
-        }
-    }
-
-    sb.writeln('<a href="$appDirName" class="card">');
-    sb.writeln('  <div class="card-img">');
-    if (htmlThumbPath != null) {
-       sb.writeln('    <img src="$htmlThumbPath" alt="$name">');
+    if (Directory(sourcePath).existsSync()) {
+      await _copyDirectory(Directory(sourcePath), Directory(destPath));
+      stdout.writeln('Copied $slug to /docs');
     } else {
-       sb.writeln('    <span>$name</span>');
+      stdout.writeln(
+        _yellow('Warning: Source directory not found: $sourcePath'),
+      );
     }
-    sb.writeln('  </div>');
-    sb.writeln('  <div class="card-content">');
-    sb.writeln('    <h2 class="card-title">$name</h2>');
-    sb.writeln('    <p class="card-desc">$desc</p>');
-    sb.writeln('  </div>');
-    sb.writeln('</a>');
+
+    String? thumbUrl;
+    if (thumbName != null) {
+      thumbUrl = '$slug/$thumbName';
+    }
+
+    experimentsData.add({
+      'name': name,
+      'description': desc,
+      'url': slug,
+      'thumbnail': thumbUrl,
+      'hasThumbnail': thumbUrl != null,
+    });
   }
 
-  // 4. Render Template
+  final staticDir = Directory('src/static');
+  if (staticDir.existsSync()) {
+    final docsStaticDir = Directory(join(outputDir.path, 'static'));
+    await _copyDirectory(staticDir, docsStaticDir);
+    stdout.writeln('Copied static assets');
+  }
+
   final templateFile = File(templatePath);
-  if (!templateFile.existsSync()) {
-      print('Error: Template file not found at $templatePath');
-      exit(1);
-  }
-  
-  var template = await templateFile.readAsString();
-  template = template.replaceFirst('<!-- APP_GRID -->', sb.toString());
+  final cardTemplateFile = File(cardTemplatePath);
 
-  // 5. Write Output
-  final outputFile = File(p.join(outputDir.path, 'index.html'));
-  await outputFile.writeAsString(template);
-  print('Successfully built to ${outputDir.path}');
+  if (!templateFile.existsSync() || !cardTemplateFile.existsSync()) {
+    stdout.writeln(_red('Error: Template files not found'));
+    exit(1);
+  }
+
+  final templateSource = await templateFile.readAsString();
+  final cardTemplateSource = await cardTemplateFile.readAsString();
+
+  final template = Template(
+    templateSource,
+    partialResolver: (name) {
+      if (name == 'card') return Template(cardTemplateSource);
+      return null;
+    },
+  );
+
+  final output = template.renderString({'experiments': experimentsData});
+
+  final outputFile = File(join(outputDir.path, 'index.html'));
+  await outputFile.writeAsString(output);
+  stdout.writeln(_green('Successfully built to ${outputDir.path}'));
+}
+
+Future<void> _serve() async {
+  await _build();
+
+  final handler = createStaticHandler('docs', defaultDocument: 'index.html');
+  final pipeline = Pipeline().addMiddleware(logRequests()).addHandler(handler);
+
+  final server = await serve(pipeline, 'localhost', 8080);
+  stdout.write('Serving /docs at ');
+  stdout.writeln(_bold('http://${server.address.host}:${server.port}'));
+  stdout.writeln('Press Ctrl+C to stop.');
+
+  final srcWatcher = DirectoryWatcher('src');
+  final configWatcher = FileWatcher('labs.yaml');
+
+  bool isBuilding = false;
+
+  Future<void> triggerBuild() async {
+    if (isBuilding) return;
+    isBuilding = true;
+    stdout.writeln(_bold('\nChange detected. Rebuilding...'));
+    try {
+      await _build();
+    } catch (error) {
+      stdout.writeln(_red('Build failed: $error'));
+    } finally {
+      isBuilding = false;
+    }
+  }
+
+  final subscription = srcWatcher.events
+      .merge(configWatcher.events)
+      .debounce(Duration(milliseconds: 200))
+      .listen((event) {
+        triggerBuild();
+      });
+
+  await ProcessSignal.sigint.watch().first;
+  await subscription.cancel();
+
+  stdout.writeln(_bold('\nShutting down server...'));
+  exit(0);
 }
 
 Future<void> _copyDirectory(Directory source, Directory destination) async {
   await destination.create(recursive: true);
   await for (final entity in source.list(recursive: false)) {
-    final newPath = p.join(destination.path, p.basename(entity.path));
+    final newPath = join(destination.path, basename(entity.path));
     if (entity is Directory) {
       await _copyDirectory(entity, Directory(newPath));
     } else if (entity is File) {

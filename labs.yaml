@@ -1,5 +1,5 @@
 experiments:
   - name: Projections
-    path: experiments/projections
+    slug: projections
     description: A tool to visualize different map projections.
-    thumbnail: experiments/projections/thumbnail.avif
+    thumbnail: thumbnail.avif

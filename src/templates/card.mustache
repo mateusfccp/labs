@@ -1,0 +1,14 @@
+<a href="{{url}}" class="card">
+  <div class="card-img">
+    {{#hasThumbnail}}
+    <img src="{{thumbnail}}" alt="{{name}}">
+    {{/hasThumbnail}}
+    {{^hasThumbnail}}
+    <span>{{name}}</span>
+    {{/hasThumbnail}}
+  </div>
+  <div class="card-content">
+    <h2 class="card-title">{{name}}</h2>
+    <p class="card-desc">{{description}}</p>
+  </div>
+</a>

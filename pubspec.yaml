@@ -2,8 +2,16 @@ name: labs_build
 description: Build script for the labs homepage.
 version: 1.0.0
 environment:
-  sdk: ^3.0.0
+  sdk: ^3.11.0
 
 dependencies:
-  yaml: ^3.1.2
-  args: ^2.4.2
+  ansicolor: ^2.0.1
+  args: ^2.7.0
+  lints: ^6.1.0
+  mustache_template: ^2.0.0
+  path: ^1.9.1 
+  shelf: ^1.4.0
+  shelf_static: ^1.1.0
+  stream_transform: ^2.1.1
+  watcher: ^1.1.0
+  yaml: ^3.1.3

@@ -8,6 +8,9 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link rel="icon" type="image/x-icon" href="static/favicon.ico">
+    <link rel="apple-touch-icon" href="static/apple-touch-icon.png">
+    <link rel="manifest" href="static/manifest.json">
     <style>
         :root {
             --bg-color: #f8fafc;
@@ -223,22 +226,15 @@
         <a href="https://mateusfccp.me" class="home-link">
             <span>←</span> mateusfccp.me
         </a>
-        <h1>pintology</h1>
+        <img width="300px" src="static/logo.png"></img>
         <div class="subtitle">A collection of experiments, prototypes, and vibing explorations.</div>
     </header>
 
     <div class="container">
         <div class="grid">
-            <a href="projections" class="card">
-  <div class="card-img">
-    <img src="projections/thumbnail.avif" alt="Projections">
-  </div>
-  <div class="card-content">
-    <h2 class="card-title">Projections</h2>
-    <p class="card-desc">A tool to visualize different map projections.</p>
-  </div>
-</a>
-
+            {{#experiments}}
+            {{> card}}
+            {{/experiments}}
         </div>
     </div>
 
