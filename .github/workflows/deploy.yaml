@@ -30,12 +30,12 @@ jobs:
         run: dart pub get
 
       - name: Build
-        run: dart tool/build.dart --output-dir=public
+        run: dart tool/build.dart build
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: public
+          path: docs
 
   deploy:
     environment:
