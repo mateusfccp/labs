@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projections - World Map Viewer</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- D3.js and TopoJSON -->
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://d3js.org/topojson.v3.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3-geo-projection@4"></script>
+
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        input[type=range] {
+            -webkit-appearance: none;
+            appearance: none;
+            background: transparent;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            height: 16px;
+            width: 16px;
+            border-radius: 50%;
+            background: #3b82f6;
+            margin-top: -6px;
+            cursor: pointer;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+            transition: transform 0.1s;
+        }
+
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.1);
+        }
+
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 4px;
+            cursor: pointer;
+            background: #e2e8f0;
+            border-radius: 2px;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 8px 16px -4px rgba(0, 0, 0, 0.1), 0 4px 8px -4px rgba(0, 0, 0, 0.06);
+        }
+
+        .panel-header {
+            cursor: grab;
+            touch-action: none;
+        }
+
+        .panel-header:active {
+            cursor: grabbing;
+        }
+
+        #map-container {
+            cursor: grab;
+            touch-action: none;
+        }
+
+        #map-container:active {
+            cursor: grabbing;
+        }
+
+        svg {
+            touch-action: none;
+        }
+
+        .country {
+            fill: #cbd5e1;
+            stroke: #fff;
+            stroke-width: 0.5px;
+            transition: fill 0.2s;
+        }
+
+        .country:hover {
+            fill: #94a3b8;
+        }
+
+        .graticule {
+            fill: none;
+            stroke: #cbd5e1;
+            stroke-width: 0.5px;
+            stroke-opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .tissot {
+            fill: rgba(239, 68, 68, 0.1);
+            stroke: rgba(239, 68, 68, 0.4);
+            stroke-width: 1px;
+            pointer-events: none;
+        }
+
+        .sphere {
+            fill: #f8fafc;
+            stroke: none;
+        }
+
+        .sphere-stroke {
+            fill: none;
+            stroke: #94a3b8;
+            stroke-width: 1.5px;
+            pointer-events: none;
+        }
+
+        @keyframes pulse-ring {
+            0% {
+                transform: scale(0.8);
+                opacity: 0.5;
+            }
+
+            100% {
+                transform: scale(1.3);
+                opacity: 0;
+            }
+        }
+
+        .pulse-ring {
+            animation: pulse-ring 1.5s cubic-bezier(0.215, 0.61, 0.355, 1) infinite;
+        }
+
+        #map-container.dragging .country {
+            pointer-events: none;
+        }
+
+        .glass-panel.minimized .panel-header:hover {
+            border-bottom-color: transparent;
+        }
+    </style>
+</head>
+
+<body class="h-screen w-screen flex flex-col relative text-slate-700">
+
+    <!-- Loading Overlay -->
+    <div id="loading"
+        class="absolute inset-0 z-50 flex items-center justify-center bg-white/80 backdrop-blur-sm transition-opacity duration-500">
+        <div class="relative flex flex-col items-center">
+            <div class="absolute w-12 h-12 rounded-full bg-blue-400/30 pulse-ring"></div>
+            <div class="relative w-3 h-3 bg-blue-500 rounded-full mb-4"></div>
+            <p class="text-slate-500 font-medium text-sm tracking-wide">INITIALIZING MAP ENGINE</p>
+        </div>
+    </div>
+
+    <!-- Main Canvas Area -->
+    <div id="map-container" class="absolute inset-0 z-0 bg-slate-50"></div>
+
+    <!-- Panel 1: Projection Selector -->
+    <div id="panel-projection"
+        class="absolute top-6 left-6 z-10 w-72 glass-panel rounded-2xl flex flex-col transition-shadow hover:shadow-xl">
+        <!-- Header / Drag Handle -->
+        <div
+            class="panel-header flex items-center justify-between p-4 border-b border-transparent hover:border-slate-100 transition-colors">
+            <div class="flex items-center gap-2 pointer-events-none">
+                <i data-lucide="globe" class="w-4 h-4 text-gray-500"></i>
+                <span class="text-sm font-bold text-slate-800">Projection</span>
+            </div>
+            <button
+                class="minimize-btn p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors">
+                <i data-lucide="minus" class="w-3 h-3"></i>
+            </button>
+        </div>
+
+        <!-- Content -->
+        <div class="panel-content p-4 pt-2">
+            <div class="relative group">
+                <select id="projection-select"
+                    class="w-full bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 block p-2.5 pr-8 appearance-none cursor-pointer hover:bg-slate-100 transition-colors shadow-sm font-medium">
+                    <optgroup label="Perspective & Azimuthal">
+                        <option value="Orthographic" selected>Orthographic (Globe)</option>
+                        <option value="Gnomonic">Gnomonic (High Distortion)</option>
+                        <option value="Stereographic">Stereographic</option>
+                        <option value="AzimuthalEquidistant">Azimuthal Equidistant</option>
+                    </optgroup>
+                    <optgroup label="Equal-Area (Preserves Size)">
+                        <option value="EqualEarth">Equal Earth</option>
+                        <option value="Mollweide">Mollweide</option>
+                        <option value="ConicEqualArea">Albers Conic</option>
+                    </optgroup>
+                    <optgroup label="Compromise (General Reference)">
+                        <option value="NaturalEarth">Natural Earth</option>
+                        <option value="Robinson">Robinson</option>
+                        <option value="WinkelTripel">Winkel Tripel</option>
+                    </optgroup>
+                    <optgroup label="Cylindrical & Rectangular">
+                        <option value="Mercator">Mercator</option>
+                        <option value="Equirectangular">Equirectangular</option>
+                    </optgroup>
+                </select>
+                <div
+                    class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-400 group-hover:text-blue-500 transition-colors">
+                    <i data-lucide="chevron-down" class="w-4 h-4"></i>
+                </div>
+            </div>
+            <p id="projection-desc" class="text-xs text-slate-500 mt-3 leading-relaxed border-t border-slate-100 pt-2">
+                A perspective projection viewing the globe from an infinite distance. Matches how Earth looks from
+                space.
+            </p>
+        </div>
+    </div>
+
+    <!-- Panel 2: Configuration -->
+    <div id="panel-config"
+        class="absolute bottom-6 right-6 z-10 w-80 glass-panel rounded-2xl flex flex-col transition-shadow hover:shadow-xl">
+        <!-- Header / Drag Handle -->
+        <div
+            class="panel-header flex items-center justify-between p-4 border-b border-transparent hover:border-slate-100 transition-colors">
+            <div class="flex items-center gap-2 pointer-events-none">
+                <i data-lucide="settings-2" class="w-4 h-4 text-gray-500"></i>
+                <h2 class="text-sm font-bold text-slate-800">Configuration</h2>
+            </div>
+            <div class="flex items-center gap-1">
+                <button id="reset-btn"
+                    class="group px-2 py-0.5 bg-blue-50 hover:bg-blue-100 rounded-md text-[10px] font-semibold text-blue-600 flex items-center gap-1 transition-all mr-2">
+                    <i data-lucide="rotate-ccw" class="w-3 h-3 group-hover:-rotate-90 transition-transform"></i> RESET
+                </button>
+                <button
+                    class="minimize-btn p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors">
+                    <i data-lucide="minus" class="w-3 h-3"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Content -->
+        <div class="panel-content p-5 pt-2">
+            <!-- Rotation X (Lambda) -->
+            <div class="mb-5">
+                <div class="flex justify-between text-xs mb-2 items-center">
+                    <span class="text-slate-500 font-medium">Longitude</span>
+                    <span id="val-rotate-x"
+                        class="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">0°</span>
+                </div>
+                <input type="range" id="rotate-x" min="-180" max="180" value="0" step="1" class="w-full">
+            </div>
+
+            <!-- Rotation Y (Phi) -->
+            <div class="mb-5">
+                <div class="flex justify-between text-xs mb-2 items-center">
+                    <span class="text-slate-500 font-medium">Latitude</span>
+                    <span id="val-rotate-y"
+                        class="font-mono text-[10px] bg-slate-100 px-1.5 py-0.5 rounded text-slate-600">0°</span>
+                </div>
+                <input type="range" id="rotate-y" min="-90" max="90" value="0" step="1" class="w-full">
+            </div>
+
+            <div class="border-t border-slate-100 my-4"></div>
+
+            <!-- Toggles Grid -->
+            <div class="grid grid-cols-1 gap-3">
+                <!-- Toggle: Graticule -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-600 flex items-center gap-2">
+                        <i data-lucide="grid-3x3" class="w-3 h-3 text-slate-400"></i> Graticule
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-graticule" class="sr-only peer" checked>
+                        <div
+                            class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500">
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Toggle: Sphere -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-600 flex items-center gap-2">
+                        <i data-lucide="circle" class="w-3 h-3 text-slate-400"></i> Border
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-sphere" class="sr-only peer" checked>
+                        <div
+                            class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500">
+                        </div>
+                    </label>
+                </div>
+
+                <!-- Toggle: Tissot -->
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-medium text-slate-600 flex items-center gap-2">
+                        <i data-lucide="circle-dashed" class="w-3 h-3 text-red-400"></i> Distortion (Tissot)
+                    </span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" id="toggle-tissot" class="sr-only peer">
+                        <div
+                            class="w-9 h-5 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-500">
+                        </div>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Info/Attribution -->
+    <div class="absolute bottom-6 left-6 z-0 opacity-40 hover:opacity-100 transition-opacity">
+        <p class="text-[10px] font-mono text-slate-400"><a href="https://mateusfccp.me">Mateus Felipe C. C. Pinto</a>
+        </p>
+    </div>
+
+    <script>
+        lucide.createIcons();
+
+        // --- State Management ---
+        const state = {
+            width: window.innerWidth,
+            height: window.innerHeight,
+            projectionName: 'Orthographic',
+            rotateX: 0, // Lambda
+            rotateY: 0, // Phi
+            scaleMultiplier: 1, // Controlled by Zoom
+            showGraticule: true,
+            showSphere: true,
+            showTissot: false,
+            worldData: null,
+            tissotData: null,
+            graticuleData: d3.geoGraticule10(),
+            isDragging: false
+        };
+
+        // --- Local Storage Management ---
+        const STORAGE_KEY = 'world-map-viewer-config';
+        let saveTimeout;
+
+        function loadSettings() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                try {
+                    const config = JSON.parse(saved);
+                    if (config.projectionName) state.projectionName = config.projectionName;
+                    // Check for undefined because rotation can be 0 (falsy)
+                    if (config.rotateX !== undefined) state.rotateX = config.rotateX;
+                    if (config.rotateY !== undefined) state.rotateY = config.rotateY;
+                    if (config.scaleMultiplier !== undefined) state.scaleMultiplier = config.scaleMultiplier;
+                    if (config.showGraticule !== undefined) state.showGraticule = config.showGraticule;
+                    if (config.showSphere !== undefined) state.showSphere = config.showSphere;
+                    if (config.showTissot !== undefined) state.showTissot = config.showTissot;
+
+                    // Sync UI
+                    const projSelect = document.getElementById('projection-select');
+                    if (projSelect) projSelect.value = state.projectionName;
+
+                    const gratToggle = document.getElementById('toggle-graticule');
+                    if (gratToggle) gratToggle.checked = state.showGraticule;
+
+                    const sphereToggle = document.getElementById('toggle-sphere');
+                    if (sphereToggle) sphereToggle.checked = state.showSphere;
+
+                    const tissotToggle = document.getElementById('toggle-tissot');
+                    if (tissotToggle) tissotToggle.checked = state.showTissot;
+
+                    // Sync D3 Zoom State to prevent "jumps" on first interaction
+                    svg.call(zoomBehavior.transform, d3.zoomIdentity.scale(state.scaleMultiplier));
+
+                    updateUiControls();
+                } catch (e) {
+                    console.error("Failed to load settings from local storage", e);
+                }
+            }
+        }
+
+        function saveSettings() {
+            clearTimeout(saveTimeout);
+            saveTimeout = setTimeout(() => {
+                const config = {
+                    projectionName: state.projectionName,
+                    rotateX: state.rotateX,
+                    rotateY: state.rotateY,
+                    scaleMultiplier: state.scaleMultiplier,
+                    showGraticule: state.showGraticule,
+                    showSphere: state.showSphere,
+                    showTissot: state.showTissot
+                };
+
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(config));
+            }, 500); // Debounce save by 500ms
+        }
+
+
+        // --- D3 Selections & Setup ---
+        const container = d3.select("#map-container");
+        const svg = container.append("svg")
+            .attr("width", state.width)
+            .attr("height", state.height)
+            .attr("viewBox", [0, 0, state.width, state.height])
+            .style("display", "block");
+
+        // Layers
+        const gSphere = svg.append("path").attr("class", "sphere");
+        const gGraticule = svg.append("path").attr("class", "graticule");
+        const gMap = svg.append("g").attr("class", "layer-map");
+        const gTissot = svg.append("path").attr("class", "tissot");
+        const gSphereStroke = svg.append("path").attr("class", "sphere-stroke");
+
+        // --- Projection Config ---
+        const projectionDefinitions = {
+            Mercator: { fn: d3.geoMercator, scale: 150, desc: "Standard navigation chart. Preserves direction but distorts size near poles." },
+            Orthographic: { fn: d3.geoOrthographic, scale: 250, clip: 90, desc: "A realistic view of the globe from space. Finite field of view." },
+            EqualEarth: { fn: d3.geoEqualEarth, scale: 180, desc: "Accurate relative sizes of continents. Good for thematic maps." },
+            NaturalEarth: { fn: d3.geoNaturalEarth1, scale: 180, desc: "A compromise projection that just 'looks right' for world maps." },
+            Mollweide: { fn: d3.geoMollweide, scale: 170, desc: "Elliptical equal-area projection. Often used for global distributions." },
+            Robinson: { fn: d3.geoRobinson, scale: 170, desc: "Classic textbook projection. Balances shape and area distortion." },
+            Equirectangular: { fn: d3.geoEquirectangular, scale: 150, desc: "Simple grid. High distortion but easy to calculate." },
+            AzimuthalEquidistant: { fn: d3.geoAzimuthalEquidistant, scale: 120, clip: 179, desc: "Distances from center are correct. Used for air routes." },
+            Gnomonic: { fn: d3.geoGnomonic, scale: 100, clip: 89, desc: "Great circles are straight lines. Severe distortion away from center." },
+            Stereographic: { fn: d3.geoStereographic, scale: 150, clip: 179, desc: "Conformal. Preserves local shapes. Used for polar regions." },
+            ConicEqualArea: { fn: d3.geoAlbers, scale: 150, desc: "Conic projection. Best for mid-latitude regions like USA or Europe." },
+            WinkelTripel: { fn: d3.geoWinkel3, scale: 160, desc: "Arithmetic mean of Equirectangular and Aitoff. Low overall distortion." }
+        };
+
+        // Initialize Projection
+        let projection = d3.geoOrthographic();
+        let path = d3.geoPath(projection);
+        let baseScale = 250;
+
+        // --- Core Logic ---
+
+        function generateTissotGrid(step) {
+            const radius = 4;
+            const circle = d3.geoCircle().radius(radius).precision(10);
+            const features = [];
+            const placed = [];
+            const minDistanceRad = (radius * 2) * Math.PI / 180;
+
+            for (let lat = -80; lat <= 80; lat += step) {
+                for (let lon = -180; lon < 180; lon += step) {
+                    const current = [lon, lat];
+                    const overlaps = placed.some(p => d3.geoDistance(current, p) < minDistanceRad);
+
+                    if (!overlaps) {
+                        features.push(circle.center(current)());
+                        placed.push(current);
+                    }
+                }
+            }
+            return { type: "GeometryCollection", geometries: features };
+        }
+
+        // --- Render Loop & Throttling ---
+
+        let isRenderPending = false;
+
+        function requestRender() {
+            if (!isRenderPending) {
+                isRenderPending = true;
+                requestAnimationFrame(() => {
+                    render();
+                    updateUiControls();
+                    isRenderPending = false;
+                });
+            }
+        }
+
+        function updateProjection() {
+            const def = projectionDefinitions[state.projectionName];
+            projection = def.fn();
+            const minDim = Math.min(state.width, state.height);
+            baseScale = def.scale * (minDim / 800);
+            // Use lower precision (higher value) for better performance on full-map projections.
+            // 0.5 is a reasonable balance. 0.1 is too expensive for complex paths.
+            projection.translate([state.width / 2, state.height / 2]).precision(0.5);
+
+            if (def.clip) {
+                projection.clipAngle(def.clip);
+            } else {
+                projection.clipAngle(null);
+            }
+
+            if (state.projectionName === 'ConicEqualArea') {
+                projection.parallels([20, 50]);
+            }
+
+            document.getElementById("projection-desc").innerText = def.desc;
+            path = d3.geoPath(projection);
+            render();
+            saveSettings(); // Save on update
+        }
+
+        function render() {
+            projection.rotate([state.rotateX, -state.rotateY]);
+            projection.scale(baseScale * state.scaleMultiplier);
+
+            const sphereData = { type: "Sphere" };
+            if (state.showSphere) {
+                gSphere.datum(sphereData).attr("d", path);
+                gSphereStroke.datum(sphereData).attr("d", path);
+            } else {
+                gSphere.attr("d", null);
+                gSphereStroke.attr("d", null);
+            }
+
+            if (state.showGraticule) {
+                gGraticule.datum(state.graticuleData).attr("d", path);
+            } else {
+                gGraticule.attr("d", null);
+            }
+
+            if (state.showTissot && state.tissotData) {
+                gTissot.datum(state.tissotData).attr("d", path);
+            } else {
+                gTissot.attr("d", null);
+            }
+
+            if (state.worldData) {
+                // Usecached selection if available, otherwise select
+                if (!state.countrySelection) {
+                    state.countrySelection = gMap.selectAll(".country");
+                }
+                state.countrySelection.attr("d", path);
+            }
+        }
+
+        // --- UI Panel Logic (Drag & Minimize) ---
+
+        function setupDraggablePanel(panelId) {
+            const panel = d3.select(panelId);
+            const header = panel.select(".panel-header");
+            const content = panel.select(".panel-content");
+            const minimizeBtn = panel.select(".minimize-btn");
+            const icon = minimizeBtn.select("i");
+
+            // Toggle Minimize
+            let isMinimized = false;
+            minimizeBtn.on("click", (e) => {
+                e.stopPropagation(); // Stop drag start
+                isMinimized = !isMinimized;
+                panel.classed("minimized", isMinimized);
+                if (isMinimized) {
+                    content.style("display", "none");
+                    icon.attr("data-lucide", "plus");
+                } else {
+                    content.style("display", "block");
+                    icon.attr("data-lucide", "minus");
+                }
+                lucide.createIcons();
+            });
+
+            // Drag Handler
+            let startX, startY, initialLeft, initialTop;
+
+            const drag = d3.drag()
+                .on("start", function (event) {
+                    const node = panel.node();
+                    const rect = node.getBoundingClientRect();
+
+                    // Lock dimensions to absolute pixels
+                    panel.style("position", "absolute")
+                        .style("left", rect.left + "px")
+                        .style("top", rect.top + "px")
+                        .style("bottom", "auto")
+                        .style("right", "auto")
+                        .style("margin", "0")
+                        .style("width", rect.width + "px");
+
+                    // Record starting positions
+                    const source = event.sourceEvent;
+                    startX = source.touches ? source.touches[0].clientX : source.clientX;
+                    startY = source.touches ? source.touches[0].clientY : source.clientY;
+                    initialLeft = rect.left;
+                    initialTop = rect.top;
+
+                    panel.classed("z-50", true); // Move to front
+                })
+                .on("drag", function (event) {
+                    const source = event.sourceEvent;
+                    const currentX = source.touches ? source.touches[0].clientX : source.clientX;
+                    const currentY = source.touches ? source.touches[0].clientY : source.clientY;
+                    const dx = currentX - startX;
+                    const dy = currentY - startY;
+
+                    panel.style("left", (initialLeft + dx) + "px")
+                        .style("top", (initialTop + dy) + "px");
+                });
+
+            header.call(drag);
+        }
+
+        setupDraggablePanel("#panel-projection");
+        setupDraggablePanel("#panel-config");
+
+
+        // --- Map Interactions ---
+
+        const zoomBehavior = d3.zoom()
+            .scaleExtent([0.5, 20])
+            .filter(event => {
+                if (event.type === 'wheel') return true;
+                if (event.type && event.type.startsWith('touch')) return true;
+                return event.type !== 'mousedown';
+            })
+            .on("zoom", (event) => {
+                state.scaleMultiplier = event.transform.k;
+                requestRender();
+            })
+            .on("end", () => {
+                saveSettings();
+            });
+
+        const dragBehavior = d3.drag()
+            .filter(function (event) {
+                // Ignore drags if multiple pointers are active (e.g. pinch-zoom)
+                return d3.pointers(event, this).length < 2;
+            })
+            .on("start", () => {
+                container.style("cursor", "grabbing")
+                    .classed("dragging", true);
+                state.isDragging = true;
+            })
+            .on("drag", (event) => {
+                // Correct sensitivity for D3 projections:
+                // 1 degree ~ PI/180 radians.
+                // Scale factor ~ 58 ensures roughly 1:1 pixel-to-degree motion at the center.
+                const k = 58;
+                let sens = k / projection.scale();
+
+                // Advanced Correction:
+                // For globe-like projections (orthographic, etc.), moving horizontally 
+                // at high latitudes visually moves fewer pixels than at the equator.
+                // To make the map "keep up" with the mouse at the poles, we increase sensitivity by 1/cos(lat).
+                // Cylindrical maps (Mercator) don't need this as their longitude lines are parallel.
+                const isCylindrical = ["Mercator", "Equirectangular"].includes(state.projectionName);
+
+                let dx = event.dx;
+
+                if (!isCylindrical) {
+                    const latRad = Math.abs(state.rotateY) * Math.PI / 180;
+                    // Clamp cosine to avoid infinity at exactly 90 degrees
+                    const cosLat = Math.max(0.1, Math.cos(latRad));
+                    dx = dx / cosLat;
+                }
+
+                state.rotateX += dx * sens;
+                state.rotateY += event.dy * sens;
+
+                // Clamp Latitude
+                state.rotateY = Math.max(-90, Math.min(90, state.rotateY));
+
+                // Normalize Longitude
+                if (state.rotateX > 180) state.rotateX -= 360;
+                if (state.rotateX < -180) state.rotateX += 360;
+
+                requestRender();
+            })
+            .on("end", () => {
+                container.style("cursor", "grab")
+                    .classed("dragging", false);
+                state.isDragging = false;
+                saveSettings();
+            });
+
+        function updateUiControls() {
+            document.getElementById('rotate-x').value = Math.round(state.rotateX);
+            document.getElementById('rotate-y').value = Math.round(state.rotateY);
+            document.getElementById('val-rotate-x').innerText = Math.round(state.rotateX) + "°";
+            document.getElementById('val-rotate-y').innerText = Math.round(state.rotateY) + "°";
+        }
+
+        svg.call(dragBehavior)
+            .call(zoomBehavior)
+            .on("dblclick.zoom", null);
+
+        // --- Initialization ---
+
+        d3.json("https://cdn.jsdelivr.net/npm/world-atlas@2/countries-110m.json")
+            .then(world => {
+                state.worldData = topojson.feature(world, world.objects.countries);
+                state.tissotData = generateTissotGrid(20);
+
+                // Initialize countries once to avoid per-frame data binding
+                gMap.selectAll("path")
+                    .data(state.worldData.features)
+                    .enter().append("path")
+                    .attr("class", "country");
+
+                // Cache the selection immediately
+                state.countrySelection = gMap.selectAll(".country");
+
+                const loading = document.getElementById('loading');
+                loading.style.opacity = 0;
+                setTimeout(() => loading.remove(), 500);
+
+                loadSettings(); // Load saved settings before first render
+                updateProjection();
+            })
+            .catch(err => console.error(err));
+
+        // --- UI Event Listeners ---
+
+        window.addEventListener('resize', () => {
+            state.width = window.innerWidth;
+            state.height = window.innerHeight;
+            svg.attr("width", state.width).attr("height", state.height)
+                .attr("viewBox", [0, 0, state.width, state.height]);
+            updateProjection();
+        });
+
+        document.getElementById('projection-select').addEventListener('change', (e) => {
+            state.projectionName = e.target.value;
+            svg.transition().duration(750).call(zoomBehavior.scaleTo, 1);
+            updateProjection();
+        });
+
+        document.getElementById('rotate-x').addEventListener('input', (e) => {
+            state.rotateX = +e.target.value;
+            document.getElementById('val-rotate-x').innerText = state.rotateX + "°";
+            requestRender();
+        });
+
+        document.getElementById('rotate-y').addEventListener('input', (e) => {
+            state.rotateY = +e.target.value;
+            document.getElementById('val-rotate-y').innerText = state.rotateY + "°";
+            requestRender();
+        });
+
+        document.getElementById('rotate-x').addEventListener('change', saveSettings);
+        document.getElementById('rotate-y').addEventListener('change', saveSettings);
+
+        document.getElementById('toggle-graticule').addEventListener('change', (e) => {
+            state.showGraticule = e.target.checked;
+            render();
+            saveSettings();
+        });
+
+        document.getElementById('toggle-sphere').addEventListener('change', (e) => {
+            state.showSphere = e.target.checked;
+            render();
+            saveSettings();
+        });
+
+        document.getElementById('toggle-tissot').addEventListener('change', (e) => {
+            state.showTissot = e.target.checked;
+            render();
+            saveSettings();
+        });
+
+        document.getElementById('reset-btn').addEventListener('click', () => {
+            const duration = 1000;
+            const startX = state.rotateX;
+            const startY = state.rotateY;
+
+            // Clear storage on reset? Or just save defaults.
+            // Let's reset to defaults and save.
+
+            svg.transition().duration(duration)
+                .call(zoomBehavior.scaleTo, 1)
+                .tween("rotate", () => {
+                    const iX = d3.interpolate(startX, 0);
+                    const iY = d3.interpolate(startY, 0);
+                    return (t) => {
+                        state.rotateX = iX(t);
+                        state.rotateY = iY(t);
+                        updateUiControls();
+                        render();
+                    };
+                })
+                .on("end", () => {
+                    // Ensure D3 zoom identity is reset to scale 1
+                    svg.call(zoomBehavior.transform, d3.zoomIdentity);
+                    saveSettings();
+                });
+        });
+
+    </script>
+</body>
+
+</html>
