@@ -29,11 +29,13 @@
 
          input[type=range] {
              -webkit-appearance: none;
+             appearance: none;
              background: transparent;
          }
 
          input[type=range]::-webkit-slider-thumb {
              -webkit-appearance: none;
+             appearance: none;
              height: 16px;
              width: 16px;
              border-radius: 50%;
@@ -65,6 +67,7 @@
 
          .panel-header {
              cursor: grab;
+             touch-action: none;
          }
 
          .panel-header:active {
@@ -73,10 +76,15 @@
 
          #map-container {
              cursor: grab;
+             touch-action: none;
          }
 
          #map-container:active {
              cursor: grabbing;
+         }
+
+         svg {
+             touch-action: none;
          }
 
          .country {
@@ -541,16 +549,20 @@
 				     .style("width", rect.width + "px");
 
 				// Record starting positions
-				startX = event.sourceEvent.clientX;
-				startY = event.sourceEvent.clientY;
+				const source = event.sourceEvent;
+				startX = source.touches ? source.touches[0].clientX : source.clientX;
+				startY = source.touches ? source.touches[0].clientY : source.clientY;
 				initialLeft = rect.left;
 				initialTop = rect.top;
 
 				panel.classed("z-50", true); // Move to front
 			    })
 			    .on("drag", function (event) {
-				const dx = event.sourceEvent.clientX - startX;
-				const dy = event.sourceEvent.clientY - startY;
+				const source = event.sourceEvent;
+				const currentX = source.touches ? source.touches[0].clientX : source.clientX;
+				const currentY = source.touches ? source.touches[0].clientY : source.clientY;
+				const dx = currentX - startX;
+				const dy = currentY - startY;
 
 				panel.style("left", (initialLeft + dx) + "px")
 				     .style("top", (initialTop + dy) + "px");
@@ -579,6 +591,12 @@
 				});
 
          const dragBehavior = d3.drag()
+				.filter(event => {
+				    // On touch devices, only allow drag with one finger.
+				    // This allows the zoom behavior to handle two-finger pinches.
+				    if (event.touches && event.touches.length > 1) return false;
+				    return true;
+				})
 				.on("start", () => {
 				    container.style("cursor", "grabbing")
 					     .classed("dragging", true);
@@ -727,4 +745,5 @@
 
 	</script>
     </body>
+
 </html>
