@@ -95,7 +95,7 @@ void main(List<String> arguments) async {
         }
     }
 
-    sb.writeln('<a href="$appDirName/index.html" class="card">');
+    sb.writeln('<a href="$appDirName" class="card">');
     sb.writeln('  <div class="card-img">');
     if (htmlThumbPath != null) {
        sb.writeln('    <img src="$htmlThumbPath" alt="$name">');
