@@ -62,10 +62,10 @@ function init() {
 }
 
 function resizeCanvases() {
-    const w = window.innerWidth;
-    const h = window.innerHeight;
-    mainCanvas.width = w;
-    mainCanvas.height = h;
+    const container = mainCanvas.parentElement;
+    const rect = container.getBoundingClientRect();
+    mainCanvas.width = rect.width;
+    mainCanvas.height = rect.height;
 }
 
 // --- UI SETUP ---

@@ -5,5 +5,6 @@ experiments:
     thumbnail: thumbnail.avif
   - name: Whiteboard
     slug: whiteboard
-    description: A collaborative whiteboard.
+    description: A serverless, P2P, collaborative whiteboard that may or not work properly.
     thumbnail: thumbnail.avif
+
