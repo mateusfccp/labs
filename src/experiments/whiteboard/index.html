@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>P2P Whiteboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+</head>
+
+<body>
+    <!-- Main drawing area -->
+    <div class="canvas-container">
+        <canvas id="main-canvas"></canvas>
+        <div id="custom-cursor" class="custom-cursor"></div>
+    </div>
+
+    <!-- UI Overlay -->
+    <div id="ui-overlay" class="ui-overlay">
+
+        <!-- Connection Panel -->
+        <div class="glass-panel connection-panel" id="connection-panel-container"
+            style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);">
+            <div id="setup-section">
+                <h2 style="text-align: center;">Choose Nickname</h2>
+                <div class="input-group">
+                    <input type="text" id="nickname-input" placeholder="e.g. Alice" maxlength="20"
+                        style="text-align: center; font-size: 1.1rem; padding: 12px;">
+                </div>
+                <button id="btn-init-peer" class="btn-primary" style="margin-top: 8px;">Join Room</button>
+            </div>
+
+            <div id="connected-section" class="hidden">
+                <div class="status-indicator">
+                    <div class="status-dot online"></div>
+                    <span style="flex-grow: 1;">Online as <strong id="lbl-my-id">...</strong></span>
+                    <button id="btn-change-name" class="btn-secondary"
+                        style="padding: 4px 8px; font-size: 0.8rem;">Change</button>
+                </div>
+
+                <div class="peers-list" id="peers-list" style="margin-top: 8px;">
+                    <small>No active peers</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Drawing Toolbar -->
+        <div class="glass-panel toolbar hidden" id="toolbar">
+            <div class="tool-group">
+                <button class="tool-btn active" data-tool="pencil" title="Pencil">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <path d="M12 19l7-7 3 3-7 7-3-3z"></path>
+                        <path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path>
+                        <path d="M2 2l7.586 7.586"></path>
+                        <circle cx="11" cy="11" r="2"></circle>
+                    </svg>
+                </button>
+                <button class="tool-btn" data-tool="eraser" title="Eraser">
+                    <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" stroke-width="2" fill="none">
+                        <path
+                            d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20H20V20Z">
+                        </path>
+                    </svg>
+                </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Thickness -->
+            <div class="thickness-selector">
+                <button class="size-btn active" data-size="2" title="Thin">
+                    <div class="dot size-sm"></div>
+                </button>
+                <button class="size-btn" data-size="6" title="Medium">
+                    <div class="dot size-md"></div>
+                </button>
+                <button class="size-btn" data-size="14" title="Thick">
+                    <div class="dot size-lg"></div>
+                </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Colors (8 options) -->
+            <div class="color-palette">
+                <button class="color-btn active" data-color="#000000" style="--c: #000000;" title="Black"></button>
+                <button class="color-btn" data-color="#FF3B30" style="--c: #FF3B30;" title="Red"></button>
+                <button class="color-btn" data-color="#FF9500" style="--c: #FF9500;" title="Orange"></button>
+                <button class="color-btn" data-color="#FFCC00" style="--c: #FFCC00;" title="Yellow"></button>
+                <button class="color-btn" data-color="#34C759" style="--c: #34C759;" title="Green"></button>
+                <button class="color-btn" data-color="#00C7BE" style="--c: #00C7BE;" title="Cyan"></button>
+                <button class="color-btn" data-color="#007AFF" style="--c: #007AFF;" title="Blue"></button>
+                <button class="color-btn" data-color="#AF52DE" style="--c: #AF52DE;" title="Purple"></button>
+            </div>
+
+            <div class="divider"></div>
+
+            <div class="tool-group">
+                <button id="btn-clear" class="tool-btn text-btn" title="Clear Canvas">Clear</button>
+            </div>
+        </div>
+        <!-- Clear Confirm Modal -->
+        <div id="clear-modal" class="modal-overlay hidden">
+            <div class="glass-panel modal-panel">
+                <h3 style="margin-bottom: 12px; font-weight: 600;">Clear Whiteboard?</h3>
+                <p style="margin-bottom: 24px; color: var(--text-dim); font-size: 0.95rem;">This will permanently clear
+                    the entire board for everyone in the room. This action cannot be undone.</p>
+                <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                    <button id="btn-cancel-clear" class="btn-secondary">Cancel</button>
+                    <button id="btn-confirm-clear" class="btn-primary" style="background:#ff3b30;">Clear Board</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

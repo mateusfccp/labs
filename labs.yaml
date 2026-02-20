@@ -3,3 +3,7 @@ experiments:
     slug: projections
     description: A tool to visualize different map projections.
     thumbnail: thumbnail.avif
+  - name: Whiteboard
+    slug: whiteboard
+    description: A collaborative whiteboard.
+    thumbnail: thumbnail.avif
