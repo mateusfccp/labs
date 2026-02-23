@@ -7,4 +7,8 @@ experiments:
     slug: whiteboard
     description: A serverless, P2P, collaborative whiteboard that may or not work properly.
     thumbnail: thumbnail.avif
+  - name: Lispinto Chat
+    slug: lispinto-chat
+    description: A chat client for Lerax's Lisp Chat.
 
+    
