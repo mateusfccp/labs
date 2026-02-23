@@ -10,5 +10,6 @@ experiments:
   - name: Lispinto Chat
     slug: lispinto-chat
     description: A chat client for Lerax's Lisp Chat.
+    thumbnail: thumbnail.webp
 
     
