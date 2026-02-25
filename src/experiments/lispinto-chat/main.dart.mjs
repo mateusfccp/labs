@@ -380,6 +380,7 @@ class CompiledApp {
       _1216: (module,f) => finalizeWrapper(f, function(x0,x1) { return module.exports._1216(f,arguments.length,x0,x1) }),
       _1217: x0 => new Promise(x0),
       _1218: x0 => x0.length,
+      _1303: (x0,x1,x2,x3) => x0.open(x1,x2,x3),
       _1311: (x0,x1) => x0.getItem(x1),
       _1313: (x0,x1,x2) => x0.setItem(x1,x2),
       _1314: Date.now,
