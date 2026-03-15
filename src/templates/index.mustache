@@ -156,8 +156,82 @@
         .card-desc {
             font-size: 1rem;
             color: #64748b;
-            margin: 0;
+            margin: 0 0 1.5rem;
             line-height: 1.6;
+        }
+
+        .card-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: auto;
+        }
+
+        .tag-pill {
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 0.25rem 0.75rem;
+            border-radius: .2rem;
+            background: #f1f5f9;
+            color: #64748b;
+            transition: all 0.2s ease;
+        }
+
+        .card:hover .tag-pill {
+            background: #e2e8f0;
+            color: #475569;
+        }
+
+        .filters {
+            margin-bottom: 3rem;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 0.75rem;
+            animation: fadeIn 0.8s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .filter-button {
+            background: white;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            padding: 0.6rem 1.2rem;
+            border-radius: .2rem;
+            cursor: pointer;
+            font-family: inherit;
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+        }
+
+        .filter-button:hover {
+            border-color: var(--accent-color);
+            color: var(--accent-color);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        }
+
+        .filter-button.active {
+            background: var(--accent-color);
+            border-color: var(--accent-color);
+            color: white;
+            box-shadow: 0 10px 15px -3px rgba(59, 130, 246, 0.3);
+        }
+
+        .grid .card.hidden {
+            display: none;
         }
 
         footer {
@@ -222,25 +296,62 @@
 </head>
 
 <body>
-    <header>
-        <a href="https://mateusfccp.me" class="home-link">
-            <span>←</span> mateusfccp.me
-        </a>
-        <img width="300" height="300" src="static/logo.webp" />
-        <div class="subtitle">A collection of experiments, prototypes, and vibing explorations.</div>
-    </header>
+<header>
+    <a href="https://mateusfccp.me" class="home-link">
+        <span>←</span> mateusfccp.me
+    </a>
+    <img width="300" height="300" src="static/logo.webp"/>
+    <div class="subtitle">A collection of experiments, prototypes, and vibing explorations.</div>
+</header>
 
-    <div class="container">
-        <div class="grid">
-            {{#experiments}}
-            {{> card}}
-            {{/experiments}}
-        </div>
+<div class="container">
+    <div class="filters">
+        <button class="filter-button active" data-filter="all">All</button>
+        {{#allTags}}
+            <button class="filter-button" data-filter="{{name}}">{{name}}</button>
+        {{/allTags}}
     </div>
+    <div class="grid">
+        {{#experiments}}
+            {{> card}}
+        {{/experiments}}
+    </div>
+</div>
 
-    <footer>
-        <p>&copy; 2026 Mateus Felipe C. C. Pinto. All rights reserved.</p>
-    </footer>
+<footer>
+    <p>&copy; 2026 Mateus Felipe C. C. Pinto. All rights reserved.</p>
+</footer>
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const filterButtons = document.querySelectorAll('.filter-button');
+        const cards = document.querySelectorAll('.card');
+
+        filterButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const filter = button.getAttribute('data-filter');
+
+                // Update active button
+                filterButtons.forEach(b => b.classList.remove('active'));
+                button.classList.add('active');
+
+                // Filter cards
+                cards.forEach(card => {
+                    if (filter === 'all') {
+                        card.classList.remove('hidden');
+                    } else {
+                        const tags = card.getAttribute('data-tags').split(',');
+                        if (tags.includes(filter)) {
+                            card.classList.remove('hidden');
+                        } else {
+                            card.classList.add('hidden');
+                        }
+                    }
+                });
+            });
+        });
+    });
+</script>
 </body>
 
 </html>

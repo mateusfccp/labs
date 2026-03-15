@@ -88,7 +88,9 @@ Future<void> _build() async {
     }
   }
 
-  final configuredDirNames = experimentsYaml.map((e) => e['slug']).toSet();
+  final configuredDirNames = {
+    for (final experiment in experimentsYaml) experiment['slug'] as String,
+  };
   for (final appPath in existingApps) {
     final dirName = basename(appPath);
     if (!configuredDirNames.contains(dirName)) {
@@ -99,12 +101,13 @@ Future<void> _build() async {
   }
 
   final experimentsData = <Map<String, Object?>>[];
+  final allTags = <String>{};
 
-  for (final exp in experimentsYaml) {
-    final name = exp['name'] as String;
-    final slug = exp['slug'] as String;
-    final desc = exp['description'] as String;
-    final thumbName = exp['thumbnail'] as String?;
+  for (final experiment in experimentsYaml) {
+    final name = experiment['name'] as String;
+    final slug = experiment['slug'] as String;
+    final desc = experiment['description'] as String;
+    final thumbnailName = experiment['thumbnail'] as String?;
 
     final sourcePath = join('src/experiments', slug);
     final destPath = join(outputDir.path, slug);
@@ -118,17 +121,23 @@ Future<void> _build() async {
       );
     }
 
-    String? thumbUrl;
-    if (thumbName != null) {
-      thumbUrl = '$slug/$thumbName';
+    String? thumbnailUrl;
+    if (thumbnailName != null) {
+      thumbnailUrl = '$slug/$thumbnailName';
     }
+
+    final tags = (experiment['tags'] as YamlList?)?.cast<String>() ?? [];
+    allTags.addAll(tags);
 
     experimentsData.add({
       'name': name,
       'description': desc,
       'url': slug,
-      'thumbnail': thumbUrl,
-      'hasThumbnail': thumbUrl != null,
+      'thumbnail': thumbnailUrl,
+      'hasThumbnail': thumbnailUrl != null,
+      'tags': [
+        for (final tag in tags) {'name': tag},
+      ],
     });
   }
 
@@ -158,7 +167,12 @@ Future<void> _build() async {
     },
   );
 
-  final output = template.renderString({'experiments': experimentsData});
+  final output = template.renderString({
+    'experiments': experimentsData,
+    'allTags': [
+      for (final tag in allTags) {'name': tag},
+    ],
+  });
 
   final outputFile = File(join(outputDir.path, 'index.html'));
   await outputFile.writeAsString(output);

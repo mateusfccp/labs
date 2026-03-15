@@ -3,13 +3,20 @@ experiments:
     slug: projections
     description: A tool to visualize different map projections.
     thumbnail: thumbnail.avif
+    tags:
+      - AI Assisted
   - name: Whiteboard
     slug: whiteboard
     description: A serverless, P2P, collaborative whiteboard that may or not work properly.
     thumbnail: thumbnail.avif
+    tags:
+      - AI Assisted
+      - P2P
   - name: Lispinto Chat
     slug: lispinto-chat
     description: A chat client for Lerax's Lisp Chat.
     thumbnail: thumbnail.webp
+    tags:
+      - AI Assisted
 
     
