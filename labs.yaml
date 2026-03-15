@@ -18,5 +18,12 @@ experiments:
     thumbnail: thumbnail.webp
     tags:
       - AI Assisted
+  - name: Celestial Bastion
+    slug: celestial-bastion
+    description: A vibe-coded, not very balanced game based on Seraph's Last Stand.
+    thumbnail: thumbnail.webp
+    tags:
+      - AI Assisted
+      - Game
 
     
