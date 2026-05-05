@@ -25,5 +25,12 @@ experiments:
     tags:
       - AI Assisted
       - Game
+  - name: Pintionary
+    slug: pintionary
+    description: A personal dictionary featuring compile-time hyperlinking.
+    thumbnail: thumbnail.avif
+    tags:
+      - Dictionary
+      - Static
 
     

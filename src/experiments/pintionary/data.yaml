@@ -1,0 +1,42 @@
+Blackslot:
+  aliases:
+    - War
+  properNoun: true
+  content: The only who carries wars.
+"cdn.discordapp.com/attachments/1427291813026205759/1501213242037633175/image.png?ex=69fb4148&is=69f9efc8&hm=4bc0a32d5e2edbe4cdd646a236074b450c4ab97ed9bbb03c7a40b386be14a49b&":
+  content: |
+    An awesome word created by Blackslot.
+
+    It means the following expression:
+    $$
+    \begin{aligned}
+    e_R &= \frac{\Delta x}{x} \\
+    e_R \cdot x &= \Delta x
+    \end{aligned}
+    $$
+
+    However, it was expressed in an absolute artistic way:
+    ![image](https://cdn.discordapp.com/attachments/1427291813026205759/1501213242037633175/image.png?ex=69fb4148&is=69f9efc8&hm=4bc0a32d5e2edbe4cdd646a236074b450c4ab97ed9bbb03c7a40b386be14a49b&)
+ELNOOB:
+  properNoun: true
+  aliases:
+    - Conquest
+  content: The one who carries conquest.
+Eren:
+  properNoun: true
+  content: Shruby's house.
+Kurapika:
+  properNoun: true
+  content: Pinto's house.
+Pinto:
+  properNoun: true
+  aliases:
+    - Twinsen
+    - Famine
+  content: Also known as Twinsen or Famine, he is the creator of this dictionary.
+Shruby:
+  properNoun: true
+  aliases:
+    - Death
+  content: The one who carries the death.
+

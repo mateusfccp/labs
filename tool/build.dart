@@ -114,7 +114,21 @@ Future<void> _build() async {
 
     if (Directory(sourcePath).existsSync()) {
       await _copyDirectory(Directory(sourcePath), Directory(destPath));
-      stdout.writeln('Copied $slug to /docs');
+
+      final generator = File(join(sourcePath, 'generate.dart'));
+      if (generator.existsSync()) {
+        stdout.writeln('Running generator for $slug...');
+        final destIndex = File(join(destPath, 'index.html')).absolute.path;
+        final result = await Process.run('dart', ['generate.dart', destIndex],
+            workingDirectory: sourcePath);
+        if (result.exitCode != 0) {
+          stdout.writeln(
+            _red('Error: Generator for $slug failed:\n${result.stderr}'),
+          );
+        }
+      }
+
+      stdout.writeln('Built $slug to /docs');
     } else {
       stdout.writeln(
         _yellow('Warning: Source directory not found: $sourcePath'),

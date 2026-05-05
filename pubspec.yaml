@@ -8,6 +8,7 @@ dependencies:
   ansicolor: ^2.0.1
   args: ^2.7.0
   lints: ^6.1.0
+  markdown: ^7.3.1
   mustache_template: ^2.0.0
   path: ^1.9.1 
   shelf: ^1.4.0
