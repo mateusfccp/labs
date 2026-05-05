@@ -198,8 +198,13 @@ header input[type="text"]:focus {
   color: #2a9d8f;
 }
 
-.entry p {
+.entry p, .entry ul, .entry ol, .entry blockquote, .entry h3, .entry h4 {
   color: var(--text-muted);
+  margin-bottom: 1.2rem;
+}
+
+.entry p:last-child, .entry ul:last-child, .entry ol:last-child, .entry blockquote:last-child {
+  margin-bottom: 0;
 }
 
 .dict-link {
