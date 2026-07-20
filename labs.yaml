@@ -32,5 +32,10 @@ experiments:
     tags:
       - Dictionary
       - Static
-
-    
+  - name: Merge Crucible
+    slug: merge-crucible
+    description: Alchemy, Forge & Roguelike Tactics.
+    thumbnail: thumbnail.avif
+    tags:
+      - Game
+      - AI Assisted

@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Merge Crucible: Rogue Grid</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome para Ícones -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <script>
+        tailwind = {
+            config: {
+                safelist: [
+                    'text-slate-400', 'text-amber-600', 'text-indigo-400', 'text-emerald-400', 'text-purple-400', 'text-red-400', 'text-amber-500', 'text-red-500', 'text-blue-400', 'text-indigo-300', 'text-cyan-400', 'text-emerald-300', 'text-pink-400', 'text-teal-400', 'text-green-500', 'text-fuchsia-400', 'text-yellow-400', 'text-yellow-500',
+                    'bg-slate-950/20', 'bg-amber-950/20', 'bg-indigo-950/20', 'bg-emerald-950/20', 'bg-yellow-950/20',
+                    'border-slate-800', 'border-amber-800/40', 'border-indigo-800/40', 'border-emerald-800/40', 'border-yellow-800/40'
+                ]
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="src/style.css" />
+</head>
+<body class="min-h-screen flex flex-col justify-between overflow-x-hidden">
+
+    <script>
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        function playSound(type) {
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain); gain.connect(audioCtx.destination);
+
+            switch(type) {
+                case 'select':
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(950, audioCtx.currentTime);
+                    gain.gain.setValueAtTime(0.04, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.05);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.05); break;
+                case 'spawn':
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(250, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(600, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.06, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.15); break;
+                case 'merge':
+                    osc.type = 'triangle'; osc.frequency.setValueAtTime(400, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1100, audioCtx.currentTime + 0.3);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.3);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.3); break;
+                case 'fail_recipe':
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(150, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(100, audioCtx.currentTime + 0.2);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.2); break;
+                case 'attack':
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(220, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(40, audioCtx.currentTime + 0.25);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.25); break;
+                case 'defend':
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(500, audioCtx.currentTime); osc.frequency.setValueAtTime(750, audioCtx.currentTime + 0.05);
+                    gain.gain.setValueAtTime(0.08, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.2); break;
+                case 'recycle':
+                    osc.type = 'sine'; osc.frequency.setValueAtTime(800, audioCtx.currentTime); osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.15);
+                    gain.gain.setValueAtTime(0.1, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.15); break;
+                case 'hurt':
+                    osc.type = 'sawtooth'; osc.frequency.setValueAtTime(120, audioCtx.currentTime); osc.frequency.linearRampToValueAtTime(30, audioCtx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.18, audioCtx.currentTime); gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.35);
+                    osc.start(); osc.stop(audioCtx.currentTime + 0.35); break;
+                case 'win':
+                    [523.25, 659.25, 783.99, 1046.50].forEach((freq, i) => {
+                        setTimeout(() => {
+                            const o = audioCtx.createOscillator(); const g = audioCtx.createGain();
+                            o.connect(g); g.connect(audioCtx.destination);
+                            o.frequency.setValueAtTime(freq, audioCtx.currentTime);
+                            g.gain.setValueAtTime(0.06, audioCtx.currentTime);
+                            g.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.25);
+                            o.start(); o.stop(audioCtx.currentTime + 0.25);
+                        }, i * 90);
+                    });
+                    break;
+            }
+        }
+    </script>
+
+    <script>
+        const DICT = {
+            "pt": {
+                "header_sub": "Alquimia, Forja e Tática Rogue-like",
+                "ui_life": "Vida:", "ui_gold": "Ouro:", "ui_progress": "Progresso:",
+                "map_title": "SUA JORNADA PELO CRISOL",
+                "map_desc": "O tabuleiro persiste entre combates! Estoque armas, escudos e relíquias na grade para se preparar.",
+                "map_btn_combat": "Entrar em Combate", "map_btn_campfire": "Ir para a Fogueira", "map_btn_merchant": "Comerciar",
+                "map_node_camp": "Fogueira", "map_node_shop": "Mercador",
+                "ui_deck_preview": "Seu Baralho de Evocação",
+                "combat_turn": "Turno", "combat_enemy": "Inimigo:",
+                "combat_enemy_hp": "INTEGRIDADE DO OPONENTE", "combat_enemy_def": "Defesa", "combat_enemy_poi": "Veneno",
+                "combat_player_def": "Defesa Atual", "combat_player_hp": "SUA INTEGRALIDADE",
+                "combat_relics": "Efeitos Passivos de Relíquias (Na Grade)", "combat_relics_none": "Nenhuma relíquia montada na grade no momento.",
+                "combat_phase": "Fase de Forja", "combat_hint": "Clique/Arraste para mesclar. Duplo clique para usar!",
+                "btn_end_turn": "Finalizar Turno", "grid_title": "Tabela Alquímica 4x4",
+                "ui_recycle": "Lixeira (Ouro)", "ui_recipe": "Receitas",
+                "ui_hand": "Sua Mão de Cartas", "ui_deck": "Baralho:", "ui_discard": "Descarte:",
+                "panel_no_item": "Nenhum item selecionado", "panel_no_item_desc": "Dê duplo clique para usar peças úteis de batalha. Arraste-as para fundir.",
+                "btn_activate": "Ativar (Duplo Clique)",
+                "reward_title": "COMBATE VENCIDO!", "reward_desc": "O tabuleiro foi mantido intocado para as próximas etapas. Escolha novas runas.",
+                "reward_gold": "OURO ENCONTRADO", "reward_choose": "Escolha 1 runa de coleta para adicionar:", "btn_skip": "Pular escolha de carta (- Não adicionar nada)",
+                "camp_title": "ACAMPAMENTO DA ALMA", "camp_desc": "Organize as runas ou recupere o vigor de seu campeão.",
+                "camp_rest": "Descansar", "camp_rest_desc": "Recupera 30% da sua Vida Máxima (+24 HP).",
+                "camp_forge": "Ganhar Material", "camp_forge_desc": "Insere diretamente 1 Fragmento de Mana e 1 Vesícula de Veneno no tabuleiro.",
+                "shop_title": "MERCADOR DE RUNAS", "shop_desc": "Gaste seu ouro acumulado para comprar runas melhores ou materiais.",
+                "btn_exit": "Sair da Loja", "shop_runes": "Runas de Coleta", "shop_ingredients": "Ingredientes Raros (Direto pro Board)",
+                "shop_purge": "Excluir Runa do Baralho", "shop_purge_desc": "Purifique o baralho para focar nas melhores coletas.",
+                "btn_buy": "Comprar:", "btn_acquire": "Adquirir:", "btn_pay": "Pagar 45", "btn_add": "Adicionar",
+                "end_defeat": "DERROTA NO CRISOL", "end_defeat_desc": "Seu corpo colapsou. Aprimore suas receitas de merge, purifique seu baralho e tente mais uma vez!",
+                "end_win": "VITORIOSO SUPREMO!", "end_win_desc": "Você desvendou as receitas secretas, ergueu monumentos mágicos e expurgou o Dragão das Cinzas!",
+                "btn_restart": "Iniciar Nova Jornada",
+                "recipe_book_title": "Grimório de Receitas de Fusão", "recipe_close": "Fechar [x]",
+                "rec_cat_1": "Armas e Defesas Comuns",
+                "rec_1_1": "⚡ Sucata de Ferro + Graveto = <strong>Adaga</strong>", "rec_1_2": "🛡️ Graveto + Graveto = <strong>Roda de Madeira</strong>",
+                "rec_1_3": "⚔️ Sucata + Sucata = <strong>Lâmina de Ferro</strong>", "rec_1_4": "🛡️ Sucata + Roda de Madeira = <strong>Escudo de Ferro</strong>",
+                "rec_cat_2": "Fusões Raras e Arcanas",
+                "rec_2_1": "🔮 Adaga + Fragmento Mana = <strong>Lâmina Rúnica</strong>", "rec_2_2": "⚡ Fragmento Mana + Graveto = <strong>Cajado Elemental</strong>",
+                "rec_2_3": "💀 Adaga + Vesícula Veneno = <strong>Adaga Peçonhenta</strong>", "rec_2_4": "🛡️ Escudo Ferro + Fragmento Mana = <strong>Baluarte Espiritual</strong>",
+                "rec_cat_3": "Artefatos de Relíquia (Ocupam espaço na grade dando buffs passivos)",
+                "rec_3_1": "🔥 Fragmento Mana + Fragmento Mana = <strong>Núcleo de Relíquia</strong> (Base)",
+                "rec_3_2": "🟢 Núcleo de Relíquia + Graveto = <strong>Jade Vital</strong> (Cura por turno)",
+                "rec_3_3": "🟣 Núcleo de Relíquia + Sucata = <strong>Bigorna da Sorte</strong> (+Dano de armas)",
+                "rec_3_4": "🟢 Núcleo de Relíquia + Vesícula = <strong>Caldeirão Tóxico</strong> (Veneno passivo)",
+                "rec_3_5": "🟣 Núcleo de Relíquia + Fragmento Mana = <strong>Anel de Éter</strong> (+1 Mana máx)",
+
+                "intent_attack": "Ataque:", "intent_flame": "Chamas:", "intent_defend": "Defesa:",
+
+                "item_iron_scrap_name": "Sucata de Ferro", "item_iron_scrap_desc": "Ferro cru. Use em armas e escudos metálicos.",
+                "item_wood_stick_name": "Graveto Rústico", "item_wood_stick_desc": "Madeira forte. Essencial para adagas ou rodas protetoras.",
+                "item_magic_shard_name": "Fragmento de Mana", "item_magic_shard_desc": "Cristal energizado. Infunde armas com mana ou forja relíquias.",
+                "item_poison_gland_name": "Vesícula Veneno", "item_poison_gland_desc": "Toxinas letais. Usada para envenenar lâminas.",
+                "item_relic_core_name": "Núcleo de Relíquia", "item_relic_core_desc": "Núcleo forjado. Combine com básicos para criar relíquias.",
+                "item_dagger_name": "Adaga Improvisada", "item_dagger_desc": "Garante 8 de dano físico imediato.",
+                "item_wooden_shield_name": "Roda de Madeira", "item_wooden_shield_desc": "Concede 8 de Escudo para mitigar dano.",
+                "item_iron_blade_name": "Lâmina de Ferro", "item_iron_blade_desc": "Forte corte. Desfere 18 de dano físico.",
+                "item_iron_shield_name": "Escudo Reforçado", "item_iron_shield_desc": "Garante 18 de Escudo para este turno.",
+                "item_mage_blade_name": "Lâmina Rúnica", "item_mage_blade_desc": "Lâmina que drena energia. Causa 15 de dano e recupera 1 Mana.",
+                "item_magic_staff_name": "Cajado Elemental", "item_magic_staff_desc": "Concentração profunda. Concede 2 de Mana adicionais.",
+                "item_poison_dagger_name": "Lâmina Peçonhenta", "item_poison_dagger_desc": "Causa 6 de dano e infecta com 12 de Veneno.",
+                "item_force_shield_name": "Baluarte Espiritual", "item_force_shield_desc": "Barreira mística. Concede 25 Escudo e devolve 10 dano.",
+                "item_relic_leaf_name": "Jade Vital", "item_relic_leaf_desc": "[Relíquia Ativa] Cura 4 Vida no fim do seu turno.",
+                "item_relic_cauldron_name": "Caldeirão Tóxico", "item_relic_cauldron_desc": "[Relíquia Ativa] Aplica 3 Veneno ao inimigo no seu turno.",
+                "item_relic_ring_name": "Anel de Éter", "item_relic_ring_desc": "[Relíquia Ativa] Comece as rodadas com +1 Mana Máxima.",
+                "item_relic_anvil_name": "Bigorna da Sorte", "item_relic_anvil_desc": "[Relíquia Ativa] Armas ativadas causam +4 dano.",
+
+                "card_gather_iron_name": "Coleta Mineral", "card_gather_iron_desc": "Evoque de 1 a 2 Sucatas de Ferro no tabuleiro.",
+                "card_gather_wood_name": "Corte de Lenha", "card_gather_wood_desc": "Evoque de 1 a 2 Gravetos Rústicos no tabuleiro.",
+                "card_gather_magic_name": "Sintonia Rúnica", "card_gather_magic_desc": "Evoque 1 Fragmento de Mana no tabuleiro.",
+                "card_gather_poison_name": "Extração Tóxica", "card_gather_poison_desc": "Evoque de 1 a 2 Vesículas de Veneno na grade.",
+                "card_quick_scavenge_name": "Pilhagem Rápida", "card_quick_scavenge_desc": "Gera exatamente 1 Sucata de Ferro e 1 Graveto.",
+
+                "enemy_slime": "Limo Mutante", "enemy_goblin": "Goblin Minerador", "enemy_gargoyle": "Gárgula Rúnica", "enemy_dragon": "Dragão das Cinzas"
+            },
+            "en": {
+                "header_sub": "Alchemy, Forge & Roguelike Tactics",
+                "ui_life": "Life:", "ui_gold": "Gold:", "ui_progress": "Progress:",
+                "map_title": "YOUR JOURNEY THROUGH THE CRUCIBLE",
+                "map_desc": "The board persists between combats! Stockpile weapons, shields and relics in the grid to prepare yourself.",
+                "map_btn_combat": "Enter Combat", "map_btn_campfire": "Go to Campfire", "map_btn_merchant": "Trade",
+                "map_node_camp": "Campfire", "map_node_shop": "Merchant",
+                "ui_deck_preview": "Your Summoning Deck",
+                "combat_turn": "Turn", "combat_enemy": "Enemy:",
+                "combat_enemy_hp": "OPPONENT INTEGRITY", "combat_enemy_def": "Defense", "combat_enemy_poi": "Poison",
+                "combat_player_def": "Current Defense", "combat_player_hp": "YOUR INTEGRITY",
+                "combat_relics": "Passive Relic Effects (On Grid)", "combat_relics_none": "No active relics on the grid.",
+                "combat_phase": "Forge Phase", "combat_hint": "Click/Drag to merge. Double click to use items!",
+                "btn_end_turn": "End Turn", "grid_title": "4x4 Alchemy Grid",
+                "ui_recycle": "Recycle (Gold)", "ui_recipe": "Recipes",
+                "ui_hand": "Your Hand", "ui_deck": "Deck:", "ui_discard": "Discard:",
+                "panel_no_item": "No item selected", "panel_no_item_desc": "Double click to use battle items. Drag to merge them.",
+                "btn_activate": "Activate (Double Click)",
+                "reward_title": "COMBAT WON!", "reward_desc": "The board was kept intact for the next stages. Choose new gather runes for your deck.",
+                "reward_gold": "GOLD FOUND", "reward_choose": "Choose 1 gather rune to add:", "btn_skip": "Skip card selection (- Add nothing)",
+                "camp_title": "SOUL CAMPFIRE", "camp_desc": "Organize your runes or recover your champion's vigor.",
+                "camp_rest": "Rest", "camp_rest_desc": "Recovers 30% of your Max Life (+24 HP).",
+                "camp_forge": "Gather Material", "camp_forge_desc": "Inserts 1 Magic Shard and 1 Poison Gland directly into your grid.",
+                "shop_title": "RUNE MERCHANT", "shop_desc": "Spend your accumulated gold to buy better runes or rare materials.",
+                "btn_exit": "Leave Shop", "shop_runes": "Gather Runes", "shop_ingredients": "Rare Ingredients (Direct to Board)",
+                "shop_purge": "Remove Rune from Deck", "shop_purge_desc": "Purify your deck to focus on your best gather cards.",
+                "btn_buy": "Buy:", "btn_acquire": "Acquire:", "btn_pay": "Pay 45", "btn_add": "Add",
+                "end_defeat": "DEFEAT IN THE CRUCIBLE", "end_defeat_desc": "Your body collapsed. Improve your merge recipes, purify your deck and try again!",
+                "end_win": "SUPREME VICTOR!", "end_win_desc": "You uncovered secret recipes, raised magical monuments and purged the Ash Dragon from Crucible!",
+                "btn_restart": "Start New Journey",
+                "recipe_book_title": "Merge Recipe Grimoire", "recipe_close": "Close [x]",
+                "rec_cat_1": "Common Weapons & Defenses",
+                "rec_1_1": "⚡ Iron Scrap + Stick = <strong>Dagger</strong>", "rec_1_2": "🛡️ Stick + Stick = <strong>Wood Wheel</strong>",
+                "rec_1_3": "⚔️ Scrap + Scrap = <strong>Iron Blade</strong>", "rec_1_4": "🛡️ Scrap + Wood Wheel = <strong>Iron Shield</strong>",
+                "rec_cat_2": "Rare & Arcane Merges",
+                "rec_2_1": "🔮 Dagger + Magic Shard = <strong>Rune Blade</strong>", "rec_2_2": "⚡ Magic Shard + Stick = <strong>Elemental Staff</strong>",
+                "rec_2_3": "💀 Dagger + Poison Gland = <strong>Venom Dagger</strong>", "rec_2_4": "🛡️ Iron Shield + Magic Shard = <strong>Spirit Bulwark</strong>",
+                "rec_cat_3": "Relic Artifacts (Takes up grid space giving passive buffs)",
+                "rec_3_1": "🔥 Magic Shard + Magic Shard = <strong>Relic Core</strong> (Base)",
+                "rec_3_2": "🟢 Relic Core + Stick = <strong>Vital Jade</strong> (Heal per turn)",
+                "rec_3_3": "🟣 Relic Core + Scrap = <strong>Lucky Anvil</strong> (+Weapon Damage)",
+                "rec_3_4": "🟢 Relic Core + Poison Gland = <strong>Toxic Brew</strong> (Passive Poison)",
+                "rec_3_5": "🟣 Relic Core + Magic Shard = <strong>Aether Ring</strong> (+1 Max Mana)",
+                
+                "intent_attack": "Attack:", "intent_flame": "Flame:", "intent_defend": "Defend:",
+
+                "item_iron_scrap_name": "Iron Scrap", "item_iron_scrap_desc": "Raw iron. Use in metallic weapons and shields.",
+                "item_wood_stick_name": "Wood Stick", "item_wood_stick_desc": "Strong wood. Essential for basic daggers or wooden wheels.",
+                "item_magic_shard_name": "Magic Shard", "item_magic_shard_desc": "Energized crystal. Infuses weapons with mana or forges relics.",
+                "item_poison_gland_name": "Poison Gland", "item_poison_gland_desc": "Lethal toxins. Used to poison blades.",
+                "item_relic_core_name": "Relic Core", "item_relic_core_desc": "Forged core. Combine with basics to build passive relics.",
+                "item_dagger_name": "Improv Dagger", "item_dagger_desc": "Deals 8 physical damage immediately.",
+                "item_wooden_shield_name": "Wood Wheel", "item_wooden_shield_desc": "Grants 8 Shield to mitigate damage.",
+                "item_iron_blade_name": "Iron Blade", "item_iron_blade_desc": "Strong slash. Deals 18 physical damage.",
+                "item_iron_shield_name": "Reinforced Shield", "item_iron_shield_desc": "Grants 18 Shield for this turn.",
+                "item_mage_blade_name": "Rune Blade", "item_mage_blade_desc": "Energy drain. Deals 15 damage and restores 1 Mana.",
+                "item_magic_staff_name": "Elemental Staff", "item_magic_staff_desc": "Elemental focus. Grants 2 additional Mana.",
+                "item_poison_dagger_name": "Venom Dagger", "item_poison_dagger_desc": "Deals 6 damage and infects target with 12 Poison.",
+                "item_force_shield_name": "Spirit Bulwark", "item_force_shield_desc": "Mystic barrier. Grants 25 Shield and deals 10 retaliation damage.",
+                "item_relic_leaf_name": "Vital Jade", "item_relic_leaf_desc": "[Passive Grid Relic] Heals 4 Life at the end of your turn.",
+                "item_relic_cauldron_name": "Toxic Brew", "item_relic_cauldron_desc": "[Passive Grid Relic] Applies 3 Poison to enemy on your turn.",
+                "item_relic_ring_name": "Aether Ring", "item_relic_ring_desc": "[Passive Grid Relic] Start all rounds with +1 Max Mana.",
+                "item_relic_anvil_name": "Lucky Anvil", "item_relic_anvil_desc": "[Passive Grid Relic] All activated weapons deal +4 damage.",
+
+                "card_gather_iron_name": "Mineral Gather", "card_gather_iron_desc": "Summon 1-2 free Iron Scraps on the board.",
+                "card_gather_wood_name": "Chop Wood", "card_gather_wood_desc": "Summon 1-2 free Wood Sticks on the board.",
+                "card_gather_magic_name": "Runic Attunement", "card_gather_magic_desc": "Summon 1 Magic Shard on the board.",
+                "card_gather_poison_name": "Toxic Extraction", "card_gather_poison_desc": "Summon 1-2 Poison Glands on the grid.",
+                "card_quick_scavenge_name": "Quick Scavenge", "card_quick_scavenge_desc": "Generates exactly 1 Iron Scrap and 1 Wood Stick.",
+
+                "enemy_slime": "Mutant Slime", "enemy_goblin": "Miner Goblin", "enemy_gargoyle": "Rune Gargoyle", "enemy_dragon": "Ash Dragon"
+            },
+            "es": {
+                "header_sub": "Alquimia, Forja y Tácticas Roguelike",
+                "ui_life": "Vida:", "ui_gold": "Oro:", "ui_progress": "Progreso:",
+                "map_title": "TU VIAJE POR EL CRISOL",
+                "map_desc": "¡El tablero persiste entre combates! Almacena armas, escudos y reliquias para prepararte.",
+                "map_btn_combat": "Entrar en Combate", "map_btn_campfire": "Ir a la Hoguera", "map_btn_merchant": "Comerciar",
+                "map_node_camp": "Hoguera", "map_node_shop": "Mercader",
+                "ui_deck_preview": "Tu Mazo de Invocación",
+                "combat_turn": "Turno", "combat_enemy": "Enemigo:",
+                "combat_enemy_hp": "INTEGRIDAD DEL OPONENTE", "combat_enemy_def": "Defensa", "combat_enemy_poi": "Veneno",
+                "combat_player_def": "Defensa Actual", "combat_player_hp": "TU INTEGRIDAD",
+                "combat_relics": "Efectos Pasivos de Reliquias (En Rejilla)", "combat_relics_none": "No hay reliquias activas en la rejilla.",
+                "combat_phase": "Fase de Forja", "combat_hint": "¡Haz clic/arrastra para fusionar. Doble clic para usar!",
+                "btn_end_turn": "Finalizar Turno", "grid_title": "Rejilla Alquímica 4x4",
+                "ui_recycle": "Reciclar (Oro)", "ui_recipe": "Recetas",
+                "ui_hand": "Tu Mano de Cartas", "ui_deck": "Mazo:", "ui_discard": "Descarte:",
+                "panel_no_item": "Ningún objeto seleccionado", "panel_no_item_desc": "Haz doble clic para usar piezas. Arrastra para fusionarlas.",
+                "btn_activate": "Activar (Doble Clic)",
+                "reward_title": "¡COMBATE GANADO!", "reward_desc": "El tablero se mantuvo intacto para las siguientes etapas. Elige nuevas runas.",
+                "reward_gold": "ORO ENCONTRADO", "reward_choose": "Elige 1 runa de recolección para agregar:", "btn_skip": "Omitir carta (- No agregar nada)",
+                "camp_title": "HOGUERA DEL ALMA", "camp_desc": "Organiza tus runas o recupera el vigor de tu campeón.",
+                "camp_rest": "Descansar", "camp_rest_desc": "Recupera 30% de tu Vida Máxima (+24 HP).",
+                "camp_forge": "Obtener Material", "camp_forge_desc": "Inserta 1 Fragmento de Maná y 1 Vesícula de Veneno directamente en el tablero.",
+                "shop_title": "MERCADER DE RUNAS", "shop_desc": "Gasta tu oro acumulado para comprar mejores runas o materiales.",
+                "btn_exit": "Salir de Tienda", "shop_runes": "Runas de Recolección", "shop_ingredients": "Ingredientes Raros",
+                "shop_purge": "Eliminar Runa del Mazo", "shop_purge_desc": "Purifica el mazo para centrarte en tus mejores cartas.",
+                "btn_buy": "Comprar:", "btn_acquire": "Adquirir:", "btn_pay": "Pagar 45", "btn_add": "Añadir",
+                "end_defeat": "DERROTA EN EL CRISOL", "end_defeat_desc": "Tu cuerpo colapsó. ¡Mejora tus recetas, purifica tu mazo y vuelve a intentarlo!",
+                "end_win": "¡VICTORIOSO SUPREMO!", "end_win_desc": "¡Descubriste recetas secretas, erigiste monumentos mágicos y purgaste al Dragón de las Cenizas!",
+                "btn_restart": "Iniciar Nuevo Viaje",
+                "recipe_book_title": "Grimorio de Recetas de Fusión", "recipe_close": "Cerrar [x]",
+                "rec_cat_1": "Armas y Defensas Comunes",
+                "rec_1_1": "⚡ Chatarra Hierro + Palo = <strong>Daga</strong>", "rec_1_2": "🛡️ Palo + Palo = <strong>Rueda de Madera</strong>",
+                "rec_1_3": "⚔️ Chatarra + Chatarra = <strong>Espada de Hierro</strong>", "rec_1_4": "🛡️ Chatarra + Rueda = <strong>Escudo de Hierro</strong>",
+                "rec_cat_2": "Fusiones Raras y Arcanas",
+                "rec_2_1": "🔮 Daga + Fragmento Maná = <strong>Espada Rúnica</strong>", "rec_2_2": "⚡ Fragmento Maná + Palo = <strong>Bastón Elemental</strong>",
+                "rec_2_3": "💀 Daga + Vesícula Veneno = <strong>Daga Venenosa</strong>", "rec_2_4": "🛡️ Escudo Hierro + Frag. Maná = <strong>Baluarte Espiritual</strong>",
+                "rec_cat_3": "Artefactos Reliquia (Dan buffs pasivos)",
+                "rec_3_1": "🔥 Fragmento Maná x2 = <strong>Núcleo de Reliquia</strong> (Base)",
+                "rec_3_2": "🟢 Núcleo Reliquia + Palo = <strong>Jade Vital</strong> (Cura por turno)",
+                "rec_3_3": "🟣 Núcleo Reliquia + Chatarra = <strong>Yunque Suerte</strong> (+Daño de armas)",
+                "rec_3_4": "🟢 Núcleo Reliquia + Vesícula = <strong>Caldero Tóxico</strong> (Veneno pasivo)",
+                "rec_3_5": "🟣 Núcleo Reliquia + Frag. Maná = <strong>Anillo de Éter</strong> (+1 Maná máx)",
+                
+                "intent_attack": "Ataque:", "intent_flame": "Llamas:", "intent_defend": "Defensa:",
+
+                "item_iron_scrap_name": "Chatarra de Hierro", "item_iron_scrap_desc": "Hierro crudo. Úsalo en armas y escudos.",
+                "item_wood_stick_name": "Palo Rústico", "item_wood_stick_desc": "Madera fuerte. Esencial para dagas o escudos.",
+                "item_magic_shard_name": "Fragmento de Maná", "item_magic_shard_desc": "Cristal. Infunde armas con maná o forja reliquias.",
+                "item_poison_gland_name": "Vesícula Veneno", "item_poison_gland_desc": "Toxinas. Se usa para envenenar hojas.",
+                "item_relic_core_name": "Núcleo Reliquia", "item_relic_core_desc": "Núcleo. Combínalo para crear reliquias.",
+                "item_dagger_name": "Daga Improvisada", "item_dagger_desc": "Otorga 8 de daño físico de inmediato.",
+                "item_wooden_shield_name": "Rueda de Madera", "item_wooden_shield_desc": "Otorga 8 de Escudo para mitigar daño.",
+                "item_iron_blade_name": "Hoja de Hierro", "item_iron_blade_desc": "Fuerte corte. Inflige 18 de daño físico.",
+                "item_iron_shield_name": "Escudo Reforzado", "item_iron_shield_desc": "Otorga 18 de Escudo para este turno.",
+                "item_mage_blade_name": "Hoja Rúnica", "item_mage_blade_desc": "Drena energía. Causa 15 de daño y recupera 1 Maná.",
+                "item_magic_staff_name": "Bastón Elemental", "item_magic_staff_desc": "Concentración. Otorga 2 de Maná adicionales.",
+                "item_poison_dagger_name": "Daga Venenosa", "item_poison_dagger_desc": "Causa 6 de daño e infecta con 12 de Veneno.",
+                "item_force_shield_name": "Baluarte Espiritual", "item_force_shield_desc": "Otorga 25 Escudo y devuelve 10 de daño.",
+                "item_relic_leaf_name": "Jade Vital", "item_relic_leaf_desc": "[Reliquia Activa] Cura 4 Vida al final del turno.",
+                "item_relic_cauldron_name": "Caldero Tóxico", "item_relic_cauldron_desc": "[Reliquia Activa] Aplica 3 Veneno al enemigo.",
+                "item_relic_ring_name": "Anel de Éter", "item_relic_ring_desc": "[Reliquia Activa] Comienza con +1 Maná Máx.",
+                "item_relic_anvil_name": "Yunque de Suerte", "item_relic_anvil_desc": "[Reliquia Activa] Armas activadas causan +4 daño.",
+
+                "card_gather_iron_name": "Recolección Mineral", "card_gather_iron_desc": "Invoca 1-2 Chatarras de Hierro.",
+                "card_gather_wood_name": "Corte de Leña", "card_gather_wood_desc": "Invoca 1-2 Palos Rústicos.",
+                "card_gather_magic_name": "Sintonía Rúnica", "card_gather_magic_desc": "Invoca 1 Fragmento de Maná.",
+                "card_gather_poison_name": "Extracción Tóxica", "card_gather_poison_desc": "Invoca 1-2 Vesículas de Veneno.",
+                "card_quick_scavenge_name": "Saqueo Rápido", "card_quick_scavenge_desc": "Genera exactamente 1 Chatarra y 1 Palo.",
+
+                "enemy_slime": "Limo Mutante", "enemy_goblin": "Goblin Minero", "enemy_gargoyle": "Gárgula Rúnica", "enemy_dragon": "Dragón Ceniza"
+            }
+        };
+
+        let currentLang = 'en';
+        function t(key) {
+            return DICT[currentLang][key] || key;
+        }
+
+        function changeLanguage(lang) {
+            currentLang = lang;
+            applyTranslationsToStatic();
+            updateGlobalHeader();
+            renderMap();
+            if(!document.getElementById('view-combat').classList.contains('hidden')) updateCombatUI();
+            if(!document.getElementById('view-merchant').classList.contains('hidden')) renderMerchantShop();
+            if(!document.getElementById('view-rewards').classList.contains('hidden')) renderRewardsTexts();
+            if(!document.getElementById('view-game-end').classList.contains('hidden')) renderGameEndTexts();
+        }
+
+        function applyTranslationsToStatic() {
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                el.innerHTML = t(el.getAttribute('data-i18n'));
+            });
+            document.querySelectorAll('[data-i18n-attr]').forEach(el => {
+                const attrs = el.getAttribute('data-i18n-attr').split(',');
+                attrs.forEach(attrPair => {
+                    const [attrName, key] = attrPair.split(':');
+                    el.setAttribute(attrName, t(key));
+                });
+            });
+        }
+    </script>
+
+    <header class="bg-slate-900/90 border-b border-slate-800 p-4 sticky top-0 z-50 backdrop-blur-md">
+        <div class="max-w-6xl mx-auto flex justify-between items-center flex-wrap gap-3">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 bg-indigo-600 rounded-lg flex items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.5)]">
+                    <i class="fas fa-flask text-xl text-white"></i>
+                </div>
+                <div>
+                    <h1 class="fantasy-title text-xl font-bold tracking-wider text-slate-100">MERGE CRUCIBLE</h1>
+                    <p class="text-xs text-indigo-400 font-semibold uppercase tracking-widest" data-i18n="header_sub">Alchemy, Forge & Roguelike Tactics</p>
+                </div>
+            </div>
+            
+            <div class="flex items-center gap-4 text-sm sm:gap-6">
+                <!-- Language Selector -->
+                <select class="bg-slate-800 border border-slate-700 text-slate-200 rounded px-2 py-1 text-xs" onchange="changeLanguage(this.value)">
+                    <option value="en">EN 🇺🇸</option>
+                    <option value="pt">PT 🇧🇷</option>
+                    <option value="es">ES 🇪🇸</option>
+                </select>
+
+                <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i class="fas fa-heart text-red-500 animate-pulse"></i>
+                    <span class="hidden sm:inline font-bold text-slate-400" data-i18n="ui_life">Life:</span>
+                    <span id="player-hp-header" class="text-red-400 font-bold">80/80</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i class="fas fa-coins text-amber-500"></i>
+                    <span class="hidden sm:inline font-bold text-slate-400" data-i18n="ui_gold">Gold:</span>
+                    <span id="player-gold-header" class="text-amber-400 font-bold">50</span>
+                </div>
+                <div class="flex items-center gap-2 bg-slate-950 px-3 py-1.5 rounded-lg border border-slate-800">
+                    <i class="fas fa-map-pin text-indigo-400"></i>
+                    <span class="hidden sm:inline font-bold text-slate-400" data-i18n="ui_progress">Progress:</span>
+                    <span id="player-progress-header" class="text-indigo-300 font-bold">1/6</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main id="main-container" class="flex-grow max-w-6xl w-full mx-auto p-4 flex flex-col justify-center">
+
+        <div id="view-map" class="w-full max-w-3xl mx-auto space-y-8 py-6">
+            <div class="text-center space-y-2">
+                <h2 class="fantasy-title text-3xl font-bold text-slate-100 tracking-wide" data-i18n="map_title">YOUR JOURNEY THROUGH THE CRUCIBLE</h2>
+                <p class="text-slate-400 max-w-md mx-auto text-sm" data-i18n="map_desc">The board persists between combats! Stockpile weapons, shields and relics in the grid to prepare yourself.</p>
+            </div>
+
+            <div class="bg-slate-900/60 border border-slate-800 p-12 sm:p-16 rounded-2xl relative overflow-hidden">
+                <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.05),transparent)] pointer-events-none"></div>
+                <div class="absolute top-1/2 left-8 right-8 h-1 bg-slate-800 -translate-y-1/2 z-0"></div>
+                <div id="map-progress-bar" class="absolute top-1/2 left-8 h-1 bg-indigo-500 -translate-y-1/2 z-0 transition-all duration-500" style="width: 0%;"></div>
+
+                <div class="relative z-10 flex justify-between items-center">
+                    <div id="map-nodes-container" class="w-full flex justify-between items-center"></div>
+                </div>
+            </div>
+
+            <div class="flex justify-center mt-4">
+                <button id="btn-action-node" onclick="enterCurrentNode()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all transform hover:-translate-y-0.5 tracking-wider uppercase text-sm flex items-center gap-2">
+                    <span id="btn-action-node-text">Enter Combat</span>
+                    <i id="btn-action-node-icon" class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+
+            <div class="bg-slate-900/40 border border-slate-800/80 p-5 rounded-xl">
+                <h3 class="text-slate-300 font-bold mb-3 flex items-center gap-2">
+                    <i class="fas fa-archive text-indigo-400"></i>
+                    <span data-i18n="ui_deck_preview">Your Summoning Deck</span> (<span id="deck-size-map">10</span>)
+                </h3>
+                <div id="deck-list-preview" class="flex flex-wrap gap-2 max-h-28 overflow-y-auto pr-2">
+                </div>
+            </div>
+        </div>
+
+        <div id="view-combat" class="hidden grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+            <div class="lg:col-span-5 flex flex-col justify-between gap-4 bg-slate-900/60 border border-slate-800 p-5 rounded-2xl relative">
+                <div class="flex justify-between items-center border-b border-slate-800 pb-3">
+                    <span id="combat-turn-badge" class="text-xs uppercase font-bold tracking-widest text-indigo-400">Turn 1</span>
+                    <div class="flex items-center gap-2 text-xs">
+                        <span class="text-slate-400" data-i18n="combat_enemy">Enemy:</span>
+                        <span id="enemy-name" class="font-bold text-slate-200">-</span>
+                    </div>
+                </div>
+
+                <div class="py-6 flex flex-col items-center justify-center text-center relative">
+                    <div id="enemy-sprite-container" class="w-32 h-32 flex items-center justify-center mb-4 transition-all duration-300 transform">
+                    </div>
+                    <div id="enemy-intent-bubble" class="absolute top-2 right-4 bg-slate-950 border border-slate-800 px-3 py-1.5 rounded-xl flex items-center gap-2 shadow-xl animate-bounce">
+                    </div>
+                    <div class="w-full max-w-xs space-y-1">
+                        <div class="flex justify-between text-xs font-bold px-1">
+                            <span class="text-slate-400" data-i18n="combat_enemy_hp">OPPONENT INTEGRITY</span>
+                            <span id="enemy-hp-text" class="text-slate-200">0 / 0</span>
+                        </div>
+                        <div class="w-full bg-slate-950 h-3.5 rounded-full overflow-hidden border border-slate-800 p-0.5 relative">
+                            <div id="enemy-hp-bar" class="bg-red-500 h-full rounded-full transition-all duration-300" style="width: 100%;"></div>
+                            <div id="enemy-armor-bar" class="absolute top-0.5 bottom-0.5 left-0.5 bg-blue-400 rounded-full transition-all duration-300" style="width: 0%;"></div>
+                        </div>
+                        <div class="flex justify-between items-center px-1 text-xs mt-1">
+                            <div id="enemy-armor-badge" class="hidden items-center gap-1 bg-blue-900/80 text-blue-300 border border-blue-700 px-2 py-0.5 rounded-md font-bold">
+                                <i class="fas fa-shield-alt text-[10px]"></i> <span id="enemy-armor-val">0</span> <span data-i18n="combat_enemy_def">Defense</span>
+                            </div>
+                            <div id="enemy-poison-badge" class="hidden items-center gap-1 bg-emerald-950/80 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded-md font-bold">
+                                <i class="fas fa-skull-crossbones text-[10px] animate-pulse"></i> <span id="enemy-poison-val">0</span> <span data-i18n="combat_enemy_poi">Poison</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-slate-950/80 border border-slate-800 p-4 rounded-xl space-y-3">
+                    <div class="flex justify-between items-center">
+                        <span class="text-xs uppercase font-bold tracking-widest text-slate-400" data-i18n="combat_player_def">Current Defense</span>
+                        <div class="flex gap-2">
+                            <div id="player-armor-badge" class="hidden items-center gap-1 bg-blue-900/80 text-blue-300 border border-blue-700 px-2.5 py-1 rounded-md font-bold text-xs">
+                                <i class="fas fa-shield-alt"></i> <span id="player-armor-val">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-heart text-red-500 text-lg"></i>
+                            <div class="text-left">
+                                <div class="text-[10px] text-slate-500 leading-none" data-i18n="combat_player_hp">YOUR INTEGRITY</div>
+                                <div id="player-hp-combat" class="font-bold text-slate-200">80 / 80</div>
+                            </div>
+                        </div>
+                        <div class="w-1/2 bg-slate-900 h-2 rounded-full overflow-hidden border border-slate-800">
+                            <div id="player-hp-bar-combat" class="bg-red-500 h-full rounded-full transition-all duration-300" style="width: 100%;"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="border-t border-slate-800 pt-3">
+                    <span class="text-xs text-slate-400 uppercase tracking-wider font-bold block mb-1" data-i18n="combat_relics">Passive Relic Effects (On Grid)</span>
+                    <div id="active-grid-relics" class="space-y-1"></div>
+                </div>
+            </div>
+
+            <div class="lg:col-span-7 flex flex-col justify-between gap-4">
+
+
+                <div class="bg-slate-950/90 border-2 border-slate-800 p-4 rounded-2xl relative flex flex-col md:flex-row gap-4 items-center justify-between">
+                    <div class="absolute top-2 right-4 text-[10px] text-slate-500 uppercase tracking-widest font-semibold" data-i18n="grid_title">4x4 Alchemy Grid</div>
+                    
+                    <div id="merge-grid" class="grid grid-cols-4 gap-3 max-w-[340px] w-full py-2"></div>
+
+                    <div class="flex flex-row md:flex-col gap-3 items-center justify-center w-full md:w-auto border-t md:border-t-0 md:border-l border-slate-800 pt-3 md:pt-0 md:pl-4">
+                        <div id="recycle-dropzone" 
+                             class="w-24 h-24 border-2 border-dashed border-red-500/30 rounded-xl bg-red-950/10 flex flex-col items-center justify-center text-center p-2 cursor-pointer transition-all hover:border-red-500/80 hover:bg-red-950/25"
+                             ondragover="allowDrop(event)" ondrop="handleRecycleDrop(event)" onclick="recycleSelectedGridItem()">
+                            <i class="fas fa-trash-alt text-red-400 text-xl mb-1 animate-pulse"></i>
+                            <span class="text-[9px] font-bold text-red-300 uppercase leading-snug" data-i18n="ui_recycle">Recycle (Gold)</span>
+                            <span class="text-[8px] text-slate-500 mt-0.5">+2</span>
+                        </div>
+
+                        <button onclick="toggleRecipeBook()" class="bg-slate-800/80 hover:bg-slate-800 border border-slate-700 text-slate-300 font-bold py-2 px-3 rounded-lg text-[10px] tracking-wider uppercase transition-all flex items-center gap-1.5">
+                            <i class="fas fa-book-open"></i>
+                            <span data-i18n="ui_recipe">Recipes</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="recipe-book-panel" class="hidden bg-slate-950 border border-slate-800 p-4 rounded-xl transition-all duration-300">
+                    <div class="flex justify-between items-center border-b border-slate-800 pb-2 mb-3">
+                        <h4 class="text-xs font-bold uppercase tracking-widest text-indigo-400"><i class="fas fa-book mr-1"></i> <span data-i18n="recipe_book_title">Merge Recipe Grimoire</span></h4>
+                        <button onclick="toggleRecipeBook()" class="text-[10px] text-slate-500 hover:text-slate-300 uppercase" data-i18n="recipe_close">Close [x]</button>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-2 text-[11px] max-h-48 overflow-y-auto pr-1" id="recipe-list-container">
+                        <!-- Dynamic Recipes will be injected here -->
+                    </div>
+                </div>
+
+                <div id="selected-item-panel" class="bg-slate-900/80 border border-slate-800 p-3 rounded-xl flex items-center justify-between min-h-[64px] transition-all duration-200">
+                    <div class="flex items-center gap-3">
+                        <div id="selected-item-icon" class="w-10 h-10 rounded-lg border border-slate-700 flex items-center justify-center bg-slate-950 text-slate-400">
+                            <i class="fas fa-hand-pointer"></i>
+                        </div>
+                        <div>
+                            <div id="selected-item-title" class="font-bold text-sm text-slate-300" data-i18n="panel_no_item">No item selected</div>
+                            <div id="selected-item-desc" class="text-xs text-slate-500" data-i18n="panel_no_item_desc">Double click to use battle items. Drag to merge them.</div>
+                        </div>
+                    </div>
+                    <button id="btn-activate-item" onclick="activateSelectedItem()" disabled class="bg-slate-800 text-slate-500 font-bold py-2 px-5 rounded-lg text-xs tracking-wider uppercase transition-all flex items-center gap-1.5 cursor-not-allowed">
+                        <i class="fas fa-bolt"></i>
+                        <span data-i18n="btn_activate">Activate (Double Click)</span>
+                    </button>
+                </div>
+
+                <div class="flex justify-between items-center bg-slate-900/60 border border-slate-800 px-4 py-3 rounded-xl mb-4">
+                    <div class="flex items-center gap-3">
+                        <div class="w-12 h-12 bg-indigo-950 border-2 border-indigo-500 rounded-full flex flex-col items-center justify-center shadow-[0_0_15px_rgba(99,102,241,0.4)]">
+                            <span id="player-energy-text" class="text-lg font-black text-indigo-200 leading-none">3</span>
+                            <span class="text-[8px] text-indigo-400 font-bold uppercase">Mana</span>
+                        </div>
+                        <div>
+                            <div class="text-xs text-slate-400 font-bold" data-i18n="combat_phase">Forge Phase</div>
+                            <div class="text-[10px] text-indigo-300 sm:text-xs" data-i18n="combat_hint">Click/Drag to merge. Double click to use items!</div>
+                        </div>
+                    </div>
+                    <button onclick="endPlayerTurn()" class="bg-amber-600 hover:bg-amber-500 text-slate-950 font-black py-2.5 px-6 rounded-lg shadow-md transition-all transform hover:-translate-y-0.5 uppercase tracking-wider text-xs flex items-center gap-2">
+                        <span data-i18n="btn_end_turn">End Turn</span>
+                        <i class="fas fa-forward"></i>
+                    </button>
+                </div>
+
+                <div class="bg-slate-900/40 border border-slate-800/80 p-4 rounded-xl space-y-3">
+                    <div class="flex justify-between items-center text-xs text-slate-400 font-semibold px-1">
+                        <span class="flex items-center gap-1">
+                            <i class="fas fa-hands"></i> <span data-i18n="ui_hand">Your Hand</span>
+                        </span>
+                        <div class="flex gap-4 text-[10px]">
+                            <span><span data-i18n="ui_deck">Deck:</span> <strong id="deck-count" class="text-indigo-400">0</strong></span>
+                            <span><span data-i18n="ui_discard">Discard:</span> <strong id="discard-count" class="text-slate-400">0</strong></span>
+                        </div>
+                    </div>
+                    <div id="player-hand" class="grid grid-cols-5 gap-2 min-h-[110px] items-center"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 3: REWARDS -->
+        <div id="view-rewards" class="hidden max-w-xl mx-auto space-y-6 py-6 text-center">
+            <div class="space-y-2">
+                <div class="w-16 h-16 bg-amber-500/20 text-amber-400 border border-amber-500 rounded-full flex items-center justify-center mx-auto text-3xl shadow-[0_0_20px_rgba(245,158,11,0.3)] animate-bounce">
+                    <i class="fas fa-trophy"></i>
+                </div>
+                <h2 class="fantasy-title text-3xl font-bold text-amber-400 tracking-wider" data-i18n="reward_title">COMBAT WON!</h2>
+                <p class="text-slate-400 text-sm" data-i18n="reward_desc">The board was kept intact for the next stages. Choose new gather runes for your deck.</p>
+            </div>
+            <div class="bg-slate-900/60 border border-slate-800 p-4 rounded-xl flex justify-around items-center max-w-sm mx-auto">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-coins text-amber-400 text-lg"></i>
+                    <div>
+                        <div class="text-[10px] text-slate-500 leading-none" data-i18n="reward_gold">GOLD FOUND</div>
+                        <div class="font-bold text-slate-200" id="reward-gold-text">+25 Gold</div>
+                    </div>
+                </div>
+            </div>
+            <div class="space-y-3">
+                <span class="text-xs text-slate-400 uppercase tracking-widest font-bold" data-i18n="reward_choose">Choose 1 gather rune to add:</span>
+                <div id="card-draft-options" class="grid grid-cols-3 gap-3"></div>
+            </div>
+            <button onclick="skipCardDraft()" class="text-xs text-slate-400 hover:text-slate-200 underline font-semibold transition-all" data-i18n="btn_skip">Skip card selection (- Add nothing)</button>
+        </div>
+
+        <!-- VIEW 4: CAMPFIRE -->
+        <div id="view-campfire" class="hidden max-w-lg mx-auto space-y-6 text-center py-8">
+            <div class="space-y-2">
+                <div class="w-16 h-16 bg-orange-500/10 text-orange-500 border border-orange-500 rounded-full flex items-center justify-center mx-auto text-3xl animate-pulse">
+                    <i class="fas fa-fire"></i>
+                </div>
+                <h2 class="fantasy-title text-3xl font-bold text-orange-400 tracking-wider" data-i18n="camp_title">SOUL CAMPFIRE</h2>
+                <p class="text-slate-400 text-sm" data-i18n="camp_desc">Organize your runes or recover your champion's vigor.</p>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button onclick="campfireRest()" class="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-red-500/50 p-6 rounded-xl flex flex-col items-center justify-center gap-3 transition-all transform hover:-translate-y-1 group">
+                    <i class="fas fa-bed text-red-400 text-3xl group-hover:scale-110 transition-transform"></i>
+                    <div>
+                        <h3 class="font-bold text-slate-200 group-hover:text-red-400 transition-colors" data-i18n="camp_rest">Rest</h3>
+                        <p class="text-xs text-slate-400 mt-1" data-i18n="camp_rest_desc">Recovers 30% of your Max Life (+24 HP).</p>
+                    </div>
+                </button>
+                <button onclick="campfireForge()" class="bg-slate-900/60 hover:bg-slate-900 border border-slate-800 hover:border-amber-500/50 p-6 rounded-xl flex flex-col items-center justify-center gap-3 transition-all transform hover:-translate-y-1 group">
+                    <i class="fas fa-hammer text-amber-400 text-3xl group-hover:scale-110 transition-transform"></i>
+                    <div>
+                        <h3 class="font-bold text-slate-200 group-hover:text-amber-400 transition-colors" data-i18n="camp_forge">Gather Material</h3>
+                        <p class="text-xs text-slate-400 mt-1" data-i18n="camp_forge_desc">Inserts 1 Magic Shard and 1 Poison Gland directly into your grid.</p>
+                    </div>
+                </button>
+            </div>
+        </div>
+
+        <!-- VIEW 5: MERCHANT -->
+        <div id="view-merchant" class="hidden max-w-2xl mx-auto space-y-6 py-4">
+            <div class="flex justify-between items-center border-b border-slate-800 pb-4">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 bg-amber-500/10 text-amber-400 border border-amber-500 rounded-xl flex items-center justify-center text-2xl">
+                        <i class="fas fa-store"></i>
+                    </div>
+                    <div>
+                        <h2 class="fantasy-title text-2xl font-bold text-slate-100" data-i18n="shop_title">RUNE MERCHANT</h2>
+                        <p class="text-xs text-slate-400" data-i18n="shop_desc">Spend your accumulated gold to buy better runes or rare materials.</p>
+                    </div>
+                </div>
+                <button onclick="exitMerchant()" class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-2 px-5 rounded-lg text-xs uppercase transition-all" data-i18n="btn_exit">Leave Shop</button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3">
+                    <h3 class="text-xs uppercase tracking-widest text-indigo-400 font-bold"><i class="fas fa-scroll mr-1"></i> <span data-i18n="shop_runes">Gather Runes</span></h3>
+                    <div id="shop-cards-list" class="space-y-2"></div>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl space-y-3">
+                        <h3 class="text-xs uppercase tracking-widest text-blue-400 font-bold"><i class="fas fa-gem mr-1"></i> <span data-i18n="shop_ingredients">Rare Ingredients</span></h3>
+                        <div id="shop-ingredients-list" class="space-y-2"></div>
+                    </div>
+                    <div class="bg-slate-950/60 border border-slate-800 p-4 rounded-xl flex justify-between items-center">
+                        <div class="space-y-0.5">
+                            <h4 class="font-bold text-sm text-slate-200" data-i18n="shop_purge">Remove Rune from Deck</h4>
+                            <p class="text-[10px] text-slate-400" data-i18n="shop_purge_desc">Purify your deck to focus on your best gather cards.</p>
+                        </div>
+                        <button id="btn-shop-remove-card" onclick="shopRemoveCardService()" class="bg-amber-600/20 hover:bg-amber-600 border border-amber-600 text-amber-300 hover:text-slate-950 font-bold py-2 px-4 rounded-lg text-xs transition-all flex items-center gap-1">
+                            <i class="fas fa-trash-alt text-[10px]"></i>
+                            <span data-i18n="btn_pay">Pay 45</span> <i class="fas fa-coins text-[10px]"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 6: END GAME -->
+        <div id="view-game-end" class="hidden max-w-md mx-auto text-center py-12 space-y-6">
+            <div id="game-end-icon-container"></div>
+            <h2 id="game-end-title" class="fantasy-title text-4xl font-bold tracking-wider"></h2>
+            <p id="game-end-desc" class="text-slate-400 text-sm max-w-sm mx-auto"></p>
+            <button onclick="restartGame()" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition-all tracking-wider uppercase text-sm" data-i18n="btn_restart">Start New Journey</button>
+        </div>
+    </main>
+
+    <footer class="bg-slate-950 border-t border-slate-800 p-3 text-center text-[11px] text-slate-500 flex justify-between px-6">
+        <span>© 2026 Merge Crucible</span>
+        <span class="font-semibold text-slate-400">Drag & Drop • Double Click</span>
+    </footer>
+
+    <script src="src/config.js"></script>
+<script src="src/dictionary.js"></script>
+<script src="src/audio.js"></script>
+<script src="src/game.js"></script>
+</body>
+</html>
