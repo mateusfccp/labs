@@ -272,11 +272,17 @@ store.subscribe((state, changeType) => {
   }
 });
 
-window.addEventListener('DOMContentLoaded', () => {
+function initApp() {
   bindEvents();
   applyTranslations();
   syncControlsUI();
   renderMatrixStructure(store, { onSelectTick: selectTick });
   updateLiveStatusUI(store);
   renderMetricsPanel(store);
-});
+}
+
+if (document.readyState === 'loading') {
+  window.addEventListener('DOMContentLoaded', initApp, { once: true });
+} else {
+  initApp();
+}
