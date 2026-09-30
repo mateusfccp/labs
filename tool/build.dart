@@ -58,7 +58,7 @@ Future<void> _build() async {
 
   final configContent = await configFile.readAsString();
   final yaml = loadYaml(configContent);
-  final experimentsYaml = yaml['experiments'] as YamlList?;
+  final experimentsYaml = (yaml['experiments'] as YamlList?)?.cast<YamlMap>();
 
   if (experimentsYaml == null) {
     stdout.writeln(_red('Error: No experiments found in $configPath'));
@@ -113,14 +113,22 @@ Future<void> _build() async {
     final destPath = join(outputDir.path, slug);
 
     if (Directory(sourcePath).existsSync()) {
+      await _compileTailwindForExperiment(
+        experiment,
+        sourcePath,
+        destPath,
+        slug,
+      );
       await _copyDirectory(Directory(sourcePath), Directory(destPath));
 
       final generator = File(join(sourcePath, 'generate.dart'));
       if (generator.existsSync()) {
         stdout.writeln('Running generator for $slug...');
         final destIndex = File(join(destPath, 'index.html')).absolute.path;
-        final result = await Process.run('dart', ['generate.dart', destIndex],
-            workingDirectory: sourcePath);
+        final result = await Process.run('dart', [
+          'generate.dart',
+          destIndex,
+        ], workingDirectory: sourcePath);
         if (result.exitCode != 0) {
           stdout.writeln(
             _red('Error: Generator for $slug failed:\n${result.stderr}'),
@@ -200,9 +208,13 @@ Future<void> _serve() async {
   final pipeline = Pipeline().addMiddleware(logRequests()).addHandler(handler);
 
   final server = await serve(pipeline, 'localhost', 8080);
+  final serverUrl = 'http://${server.address.host}:${server.port}';
   stdout.write('Serving /docs at ');
-  stdout.writeln(_bold('http://${server.address.host}:${server.port}'));
+  stdout.writeln(_bold(serverUrl));
   stdout.writeln('Press Ctrl+C to stop.');
+
+  // Automatically open browser on serve
+  await _openBrowser(serverUrl);
 
   final srcWatcher = DirectoryWatcher('src');
   final configWatcher = FileWatcher('labs.yaml');
@@ -222,7 +234,9 @@ Future<void> _serve() async {
     }
   }
 
+  // Filter out .min.css files so Tailwind compilation does not cause an infinite loop
   final subscription = srcWatcher.events
+      .where((event) => !event.path.endsWith('.min.css'))
       .merge(configWatcher.events)
       .debounce(Duration(milliseconds: 200))
       .listen((event) {
@@ -234,6 +248,102 @@ Future<void> _serve() async {
 
   stdout.writeln(_bold('\nShutting down server...'));
   exit(0);
+}
+
+Future<void> _compileTailwindForExperiment(
+  YamlMap experiment,
+  String sourcePath,
+  String destPath,
+  String slug,
+) async {
+  final hasTailwindFlag = experiment['tailwind'] == true;
+
+  final candidateInputs = [
+    join(sourcePath, 'styles', 'tailwind.css'),
+    join(sourcePath, 'styles', 'input.css'),
+    join(sourcePath, 'tailwind.css'),
+  ];
+
+  String? inputPath;
+  for (final candidate in candidateInputs) {
+    if (File(candidate).existsSync()) {
+      inputPath = candidate;
+      break;
+    }
+  }
+
+  if (hasTailwindFlag && inputPath == null) {
+    final defaultInput = File(join(sourcePath, 'styles', 'tailwind.css'));
+    defaultInput.parent.createSync(recursive: true);
+    defaultInput.writeAsStringSync('@import "tailwindcss";\n@source "..";\n');
+    inputPath = defaultInput.path;
+  }
+
+  if (inputPath == null) return;
+
+  stdout.writeln('Compiling Tailwind CSS for $slug...');
+
+  final sourceOutput = join(sourcePath, 'styles', 'tailwind.min.css');
+  final destOutput = join(destPath, 'styles', 'tailwind.min.css');
+
+  final localBin = File(join('node_modules', '.bin', 'tailwindcss'));
+  final executable = localBin.existsSync() ? localBin.absolute.path : 'npx';
+  final args = localBin.existsSync()
+      ? ['-i', inputPath, '-o', sourceOutput, '--minify']
+      : ['@tailwindcss/cli', '-i', inputPath, '-o', sourceOutput, '--minify'];
+
+  try {
+    final result = await Process.run(executable, args);
+    if (result.exitCode == 0) {
+      final srcFile = File(sourceOutput);
+      if (srcFile.existsSync()) {
+        final destFile = File(destOutput);
+        destFile.parent.createSync(recursive: true);
+        await srcFile.copy(destOutput);
+      }
+      stdout.writeln(_green('Successfully compiled Tailwind CSS for $slug'));
+    } else {
+      stdout.writeln(
+        _yellow(
+          'Warning: Tailwind compilation for $slug failed:\n${result.stderr}',
+        ),
+      );
+    }
+  } catch (e) {
+    stdout.writeln(_yellow('Warning: Could not run Tailwind CLI: $e'));
+  }
+}
+
+Future<void> _openBrowser(String url) async {
+  try {
+    ProcessResult? result;
+    if (Platform.isMacOS) {
+      result = await Process.run('open', [url]);
+    } else if (Platform.isWindows) {
+      result = await Process.run('cmd', ['/c', 'start', '', url]);
+    } else if (Platform.isLinux) {
+      result = await Process.run('xdg-open', [url]);
+    } else {
+      stdout.writeln(
+        _yellow(
+          'Warning: Automatic browser opening is not supported on ${Platform.operatingSystem}.',
+        ),
+      );
+      return;
+    }
+
+    if (result.exitCode != 0) {
+      stdout.writeln(
+        _yellow(
+          'Warning: Failed to open browser automatically:\n${result.stderr}',
+        ),
+      );
+    }
+  } catch (error) {
+    stdout.writeln(
+      _yellow('Warning: Could not open browser automatically: $error'),
+    );
+  }
 }
 
 Future<void> _copyDirectory(Directory source, Directory destination) async {

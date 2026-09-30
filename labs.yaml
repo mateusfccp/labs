@@ -41,6 +41,7 @@ experiments:
       - AI Assisted
   - name: Process Scheduler
     slug: process-scheduler
+    tailwind: true
     description: An interactive CPU process scheduling simulator and timeline visualizer.
     thumbnail: thumbnail.avif
     tags:
