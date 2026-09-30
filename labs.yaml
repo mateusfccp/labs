@@ -39,3 +39,10 @@ experiments:
     tags:
       - Game
       - AI Assisted
+  - name: Process Scheduler
+    slug: process-scheduler
+    description: An interactive CPU process scheduling simulator and timeline visualizer.
+    thumbnail: thumbnail.avif
+    tags:
+      - AI Assisted
+      - Simulation

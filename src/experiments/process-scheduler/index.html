@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Process Scheduler</title>
+
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.3/dist/chart.umd.min.js"></script>
+
+  <!-- Google Fonts: Inter & JetBrains Mono -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+
+  <link rel="stylesheet" href="styles/main.css?v=7">
+  <link rel="stylesheet" href="styles/matrix.css?v=7">
+</head>
+
+<body class="min-h-screen flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+
+  <!-- Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40">
+    <div class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-2.5">
+        <div class="w-8 h-8 rounded-lg bg-slate-900 flex items-center justify-center text-indigo-400 shrink-0">
+          <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z" />
+          </svg>
+        </div>
+        <h1 data-i18n="app_title" class="text-sm sm:text-base font-bold text-slate-900 tracking-tight">Process Scheduler</h1>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <!-- Language Switcher (Auto-detects system language + manual override) -->
+        <select id="langSelect" aria-label="Language" class="px-2.5 py-1.5 text-xs font-semibold text-slate-700 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none cursor-pointer">
+          <option value="en">EN</option>
+          <option value="pt">PT</option>
+          <option value="es">ES</option>
+        </select>
+
+        <button id="btnRestoreDefault" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-700 bg-white hover:bg-slate-50 border border-slate-200 rounded-lg transition">
+          <svg class="w-3.5 h-3.5 text-indigo-600 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          <span data-i18n="btn_reset_default">Reset Default</span>
+        </button>
+
+        <button id="btnOpenHelp" type="button" class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition">
+          <svg class="w-3.5 h-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+          <span data-i18n="btn_guide">Guide</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 flex-1 w-full space-y-3.5">
+
+    <!-- Unified Control & Transport Deck -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+
+      <!-- Policy & Parameters Bar -->
+      <div class="p-3 flex flex-wrap items-center gap-3 border-b border-slate-100">
+        <div class="flex items-center gap-2 flex-1 min-w-[240px]">
+          <label for="algorithmSelect" data-i18n="label_policy" class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Policy</label>
+          <select id="algorithmSelect" class="w-full max-w-md px-3 py-1.5 text-xs sm:text-sm font-semibold bg-slate-50 hover:bg-slate-100/70 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 transition">
+            <optgroup data-i18n-label="group_non_preemptive" label="Non-Preemptive">
+              <option value="PRIORITY_NP" data-i18n="algo_PRIORITY_NP" selected>Priority (Non-Preemptive)</option>
+              <option value="FCFS" data-i18n="algo_FCFS">FCFS (First-Come, First-Served)</option>
+              <option value="SNJ" data-i18n="algo_SNJ">SJF / SNJ (Shortest Job First)</option>
+              <option value="HRRH" data-i18n="algo_HRRH">HRRN (Highest Response Ratio Next)</option>
+            </optgroup>
+            <optgroup data-i18n-label="group_preemptive" label="Preemptive">
+              <option value="SRTF" data-i18n="algo_SRTF">SRTF (Shortest Remaining Time First)</option>
+              <option value="PRIORITY_P" data-i18n="algo_PRIORITY_P">Priority (Preemptive)</option>
+              <option value="RR" data-i18n="algo_RR">Round Robin (Time-Slice)</option>
+            </optgroup>
+          </select>
+        </div>
+
+        <!-- Quantum (Only shown for Round Robin) -->
+        <div id="quantumContainer" class="flex items-center gap-2 hidden">
+          <label for="quantumInput" data-i18n="label_quantum" class="text-xs font-bold text-slate-500 uppercase tracking-wider">Quantum</label>
+          <div class="flex items-center bg-slate-50 border border-slate-300 rounded-lg p-0.5">
+            <button id="btnQuantumDec" type="button" class="w-6 h-6 rounded bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">−</button>
+            <input type="number" id="quantumInput" min="1" max="25" value="2" class="w-10 text-center font-mono font-bold text-xs text-slate-900 bg-transparent focus:outline-none">
+            <button id="btnQuantumInc" type="button" class="w-6 h-6 rounded bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center">+</button>
+          </div>
+        </div>
+
+        <!-- Priority Convention (Only shown for Priority policies) -->
+        <div id="priorityRuleContainer" class="flex items-center gap-2">
+          <label for="priorityRuleSelect" data-i18n="label_order" class="text-xs font-bold text-slate-500 uppercase tracking-wider shrink-0">Order</label>
+          <select id="priorityRuleSelect" class="px-2.5 py-1.5 text-xs font-semibold bg-slate-50 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-800">
+            <option value="DESC" data-i18n="prio_desc" selected>5 &gt; 1 (Higher # = Higher Priority)</option>
+            <option value="ASC" data-i18n="prio_asc">1 &gt; 5 (Lower # = Higher Priority)</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Playback Transport & Scrubber Bar -->
+      <div class="bg-slate-900 text-white px-3 py-2 flex flex-wrap items-center justify-between gap-2.5">
+        <div class="flex items-center gap-1">
+          <button id="btnReset" type="button" title="Start (Home)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0019 16V8a1 1 0 00-1.6-.8l-5.333 4zM4.066 11.2a1 1 0 000 1.6l5.334 4A1 1 0 0011 16V8a1 1 0 00-1.6-.8l-5.334 4z"/></svg>
+          </button>
+
+          <button id="btnStepBack" type="button" title="Previous Tick (Left Arrow)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M15 19l-7-7 7-7"/></svg>
+          </button>
+
+          <button id="btnPlayPause" type="button" class="inline-flex items-center gap-1.5 px-3 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 font-semibold text-xs text-white transition">
+            <span id="playIcon">
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            </span>
+            <span id="playText" data-i18n="btn_play">Play</span>
+          </button>
+
+          <button id="btnStepForward" type="button" title="Next Tick (Right Arrow)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M9 5l7 7-7 7"/></svg>
+          </button>
+
+          <button id="btnComplete" type="button" title="End (End)" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11.933 12.8a1 1 0 000-1.6L6.6 7.2A1 1 0 005 8v8a1 1 0 001.6.8l5.333-4zM19.933 12.8a1 1 0 000-1.6l-5.333-4A1 1 0 0013 8v8a1 1 0 001.6.8l5.333-4z"/></svg>
+          </button>
+
+          <select id="speedSelect" aria-label="Playback Speed" class="ml-1 px-2 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 text-xs font-mono font-semibold focus:outline-none cursor-pointer">
+            <option value="750">0.5x</option>
+            <option value="420" selected>1.0x</option>
+            <option value="220">2.0x</option>
+            <option value="110">4.0x</option>
+          </select>
+        </div>
+
+        <!-- Scrubber -->
+        <div class="flex-1 min-w-[140px] max-w-sm flex items-center gap-2 px-1 order-last sm:order-none w-full sm:w-auto">
+          <span class="text-[11px] font-mono text-slate-400">0</span>
+          <input id="timelineScrubber" type="range" min="0" max="24" value="0" aria-label="Timeline Scrubber" class="timeline-scrubber w-full">
+          <span id="totalTicksLabel" class="text-[11px] font-mono text-slate-400">24</span>
+        </div>
+
+        <!-- Telemetry -->
+        <div class="flex items-center gap-2 ml-auto">
+          <button id="btnToggleMaskFuture" type="button" aria-pressed="false" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700 transition">
+            <span data-i18n="btn_mask_future">Mask Future</span>
+          </button>
+
+          <div class="bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1 font-mono text-xs">
+            <span class="text-slate-400">t=</span>
+            <span id="currentTickLabel" class="font-bold text-amber-400">0</span>
+          </div>
+
+          <div class="bg-slate-800 px-2.5 py-1 rounded-lg border border-slate-700 flex items-center gap-1.5 text-xs">
+            <span data-i18n="label_cpu" class="text-slate-400">CPU:</span>
+            <span id="activeCpuProcess" class="font-bold font-mono px-2 py-0.5 rounded text-xs">-</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Compact Status & Ready Queue Bar -->
+    <section class="grid grid-cols-1 lg:grid-cols-12 gap-3">
+      <div class="lg:col-span-7 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center gap-2.5">
+        <span data-i18n="label_event" class="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Event:</span>
+        <div id="stepExplanationText" class="text-xs text-slate-700 font-medium truncate">
+          —
+        </div>
+      </div>
+
+      <div class="lg:col-span-5 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 shadow-2xs flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2 min-w-0 flex-1">
+          <span data-i18n="label_ready_queue" class="text-[11px] font-bold uppercase tracking-wider text-slate-400 shrink-0">Ready Queue:</span>
+          <div id="readyQueueBox" class="flex flex-wrap items-center gap-1.5"></div>
+        </div>
+        <span id="queueCountBadge" class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 shrink-0">0</span>
+      </div>
+    </section>
+
+    <!-- Split-Pane Schedule Matrix Card -->
+    <section class="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
+      <!-- Toolbar -->
+      <div class="px-3.5 py-2 bg-slate-50 border-b border-slate-200 flex items-center justify-between gap-2">
+        <div class="flex items-center gap-2">
+          <span class="text-xs sm:text-sm font-bold text-slate-900" id="matrixTitle">Priority (Non-Preemptive)</span>
+          <span class="text-[11px] font-mono px-2 py-0.5 rounded bg-slate-200/70 text-slate-700">
+            <strong id="totalTimeDisplay">25</strong> <span data-i18n="label_ticks">ticks</span>
+          </span>
+        </div>
+
+        <button id="btnAddNewProcess" type="button" class="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">
+          <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.2" d="M12 4v16m8-8H4"/></svg>
+          <span data-i18n="btn_add_process">Add Process</span>
+        </button>
+      </div>
+
+      <!-- Split-Pane Wrapper: Fixed Left Parameter Table + Scrollable Right Timeline Table -->
+      <div id="matrixSplitWrapper" class="flex items-stretch bg-slate-100">
+        <!-- Left Fixed Parameter Pane (Never scrolls horizontally) -->
+        <div class="shrink-0 bg-slate-100 border-r-2 border-slate-300 z-10">
+          <table id="paramsTable" class="select-none text-xs bg-white">
+            <thead>
+              <tr class="bg-slate-100 text-slate-600 text-[10px] sm:text-[11px] uppercase font-bold tracking-wider">
+                <th data-i18n="col_proc" class="col-proc text-center">Proc</th>
+                <th data-i18n="col_arrival" class="col-param text-center">Arrival</th>
+                <th data-i18n="col_burst" class="col-param text-center">Burst</th>
+                <th id="thPriorityCol" data-i18n="col_priority" class="col-param text-center transition-opacity">Priority</th>
+                <th class="col-action text-center" aria-label="Remove"></th>
+              </tr>
+            </thead>
+            <tbody id="paramsTableBody"></tbody>
+            <tfoot>
+              <tr class="bg-slate-100">
+                <td id="queueFooterLabel" colspan="5" data-i18n="row_cpu" class="px-3 text-right font-bold text-xs text-slate-700">
+                  CPU
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Right Scrollable Timeline Pane -->
+        <div id="tableScrollContainer" class="table-scroll flex-1 overflow-x-auto bg-white">
+          <div id="timelineTableWrapper">
+            <table id="timelineTable" class="select-none text-xs">
+              <thead>
+                <tr id="timelineHeaderRow" class="bg-slate-100"></tr>
+              </thead>
+              <tbody id="timelineTableBody"></tbody>
+              <tfoot>
+                <tr id="queueFooterRow" class="bg-slate-50 font-semibold"></tr>
+              </tfoot>
+            </table>
+            <div id="playheadOverlay" class="playhead-overlay" aria-hidden="true"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Metrics & Benchmark Section -->
+    <section class="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3.5">
+      <div class="flex flex-wrap items-center justify-between gap-2">
+        <h2 data-i18n="section_metrics" class="text-xs font-bold text-slate-800 uppercase tracking-wider">Performance Metrics</h2>
+
+        <div class="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200">
+          <button id="btnMetricsTabTable" type="button" data-i18n="tab_table" class="px-3 py-1 rounded-md bg-white text-indigo-600 shadow-2xs font-semibold transition text-xs">Table</button>
+          <button id="btnMetricsTabChart" type="button" data-i18n="tab_chart" class="px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 font-medium transition text-xs">Chart</button>
+          <button id="btnMetricsTabCompare" type="button" data-i18n="tab_compare" class="px-3 py-1 rounded-md text-slate-600 hover:text-slate-900 font-medium transition text-xs">Compare Policies</button>
+        </div>
+      </div>
+
+      <!-- KPI Cards -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
+        <div class="bg-slate-50 p-2.5 rounded-lg border border-slate-200">
+          <div data-i18n="kpi_avg_tr" class="text-[10px] font-bold text-slate-500 uppercase">Avg. Turnaround (Tr)</div>
+          <div id="avgTurnaround" class="text-lg font-extrabold text-slate-900 font-mono">10.40</div>
+        </div>
+
+        <div class="bg-indigo-50/60 p-2.5 rounded-lg border border-indigo-100">
+          <div data-i18n="kpi_avg_tw" class="text-[10px] font-bold text-indigo-600 uppercase">Avg. Waiting (Tw)</div>
+          <div id="avgWaiting" class="text-lg font-extrabold text-indigo-700 font-mono">5.40</div>
+        </div>
+
+        <div class="bg-emerald-50/60 p-2.5 rounded-lg border border-emerald-100">
+          <div data-i18n="kpi_avg_rp" class="text-[10px] font-bold text-emerald-700 uppercase">Avg. Response (Rp)</div>
+          <div id="avgResponse" class="text-lg font-extrabold text-emerald-800 font-mono">5.40</div>
+        </div>
+
+        <div class="bg-sky-50/60 p-2.5 rounded-lg border border-sky-100">
+          <div data-i18n="kpi_avg_eff" class="text-[10px] font-bold text-sky-700 uppercase">Avg. Efficiency (E)</div>
+          <div class="flex items-baseline gap-1.5">
+            <span id="avgEfficiency" class="text-lg font-extrabold text-sky-800 font-mono">0.58</span>
+            <span class="text-[11px] font-mono text-sky-600">(<span id="avgEfficiencyPct">58.3%</span>)</span>
+          </div>
+        </div>
+
+        <div class="bg-amber-50/60 p-2.5 rounded-lg border border-amber-100 col-span-2 sm:col-span-1">
+          <div data-i18n="kpi_cpu_util" class="text-[10px] font-bold text-amber-800 uppercase">CPU Utilization</div>
+          <div class="flex items-baseline gap-1.5">
+            <span id="cpuUtilVal" class="text-lg font-extrabold text-amber-900 font-mono">100.0%</span>
+            <span class="text-[11px] font-mono text-amber-700">(<span id="throughputVal">0.200</span> p/t)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tab 1: Metrics Table -->
+      <div id="metricsTableView" class="overflow-x-auto rounded-lg border border-slate-200">
+        <table class="w-full text-xs text-left">
+          <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+            <tr>
+              <th data-i18n="th_process" class="py-2 px-3">Process</th>
+              <th data-i18n="col_arrival" class="py-2 px-2.5 text-center">Arrival</th>
+              <th data-i18n="col_burst" class="py-2 px-2.5 text-center">Burst</th>
+              <th data-i18n="th_start" class="py-2 px-2.5 text-center">Start</th>
+              <th data-i18n="th_finish" class="py-2 px-2.5 text-center">Finish</th>
+              <th data-i18n="th_turnaround" class="py-2 px-2.5 text-center font-bold text-slate-800">Turnaround (Tr)</th>
+              <th data-i18n="th_waiting" class="py-2 px-2.5 text-center font-bold text-indigo-700">Waiting (Tw)</th>
+              <th data-i18n="th_response" class="py-2 px-2.5 text-center font-bold text-emerald-700">Response (Rp)</th>
+              <th data-i18n="th_efficiency" class="py-2 px-2.5 text-center font-bold text-sky-700">Efficiency (E)</th>
+            </tr>
+          </thead>
+          <tbody id="metricsTableBody" class="divide-y divide-slate-100 font-mono"></tbody>
+          <tfoot id="metricsTableFoot"></tfoot>
+        </table>
+      </div>
+
+      <!-- Tab 2 & 3: Chart & Benchmark -->
+      <div id="metricsChartView" class="hidden space-y-3">
+        <div class="h-60 w-full bg-slate-50/50 p-2.5 rounded-lg border border-slate-200">
+          <canvas id="metricsCanvas"></canvas>
+        </div>
+
+        <div id="algoCompareTableContainer" class="hidden overflow-x-auto rounded-lg border border-slate-200">
+          <table class="w-full text-xs text-left">
+            <thead class="bg-slate-50 text-slate-600 font-semibold border-b border-slate-200 uppercase text-[10px] tracking-wider">
+              <tr>
+                <th data-i18n="th_policy" class="py-2 px-3">Policy</th>
+                <th data-i18n="th_avg_tr" class="py-2 px-2.5 text-center">Avg. Turnaround</th>
+                <th data-i18n="th_avg_tw" class="py-2 px-2.5 text-center text-indigo-700">Avg. Waiting</th>
+                <th data-i18n="th_avg_rp" class="py-2 px-2.5 text-center text-emerald-700">Avg. Response</th>
+                <th data-i18n="th_avg_eff" class="py-2 px-2.5 text-center text-sky-700">Avg. Efficiency</th>
+              </tr>
+            </thead>
+            <tbody id="algoCompareTableBody" class="divide-y divide-slate-100 text-xs"></tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- Reference Guide Modal -->
+  <div id="helpModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center hidden p-4" role="dialog" aria-modal="true" aria-labelledby="helpModalTitle">
+    <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full p-5 border border-slate-200 space-y-3.5 max-h-[85vh] overflow-y-auto custom-scroll">
+      <div class="flex items-center justify-between pb-2 border-b border-slate-100">
+        <h3 id="helpModalTitle" data-i18n="guide_title" class="text-sm font-bold text-slate-900">Scheduling Policies &amp; Formulas</h3>
+        <button id="btnCloseHelp" type="button" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <div class="text-xs text-slate-600 space-y-2 leading-relaxed">
+        <p data-i18n-html="guide_p_np"></p>
+        <p data-i18n-html="guide_fcfs"></p>
+        <p data-i18n-html="guide_sjf"></p>
+        <p data-i18n-html="guide_srtf"></p>
+        <p data-i18n-html="guide_hrrn"></p>
+        <p data-i18n-html="guide_rr"></p>
+        <p data-i18n-html="guide_p_p"></p>
+
+        <div class="p-2.5 bg-slate-50 rounded-lg border border-slate-200 font-mono text-[11px] text-slate-700 space-y-0.5">
+          <div>Turnaround (Tr) = Finish &minus; Arrival = Service (Burst) + Tw</div>
+          <div>Waiting (Tw) = Turnaround &minus; Service (Burst)</div>
+          <div>Response (Rp) = Start &minus; Arrival</div>
+          <div>Efficiency (E) = Service (Burst) / Turnaround (Tr)</div>
+        </div>
+      </div>
+
+      <div class="pt-1 text-right">
+        <button id="btnDismissHelp" type="button" data-i18n="btn_close" class="px-4 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg transition">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="src/main.js?v=4"></script>
+</body>
+</html>

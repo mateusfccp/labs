@@ -147,6 +147,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.11.5",
+  "generatorVersion": "3.13.0",
+  "flutterRoot": "file:///Users/mateusfccp/.puro/envs/stable/flutter",
+  "flutterVersion": "3.47.0",
   "pubCache": "file:///Users/mateusfccp/.puro/shared/pub_cache"
 }

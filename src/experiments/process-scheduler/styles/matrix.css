@@ -1,0 +1,274 @@
+/* Split-Pane Schedule Matrix: Fixed Left Parameter Table + Scrollable Right Timeline Grid */
+
+#timelineTableWrapper {
+  --tick-w: 40px;
+  --active-tick: 0;
+  position: relative;
+  width: max-content;
+}
+
+#paramsTable,
+#timelineTable {
+  border-collapse: separate;
+  border-spacing: 0;
+  table-layout: fixed;
+}
+
+#timelineTable {
+  width: max-content;
+}
+
+/* Synchronized row heights between left fixed table and right scrollable timeline */
+#paramsTable thead tr,
+#paramsTable thead th,
+#timelineTable thead tr,
+#timelineTable thead th {
+  height: 38px;
+}
+
+#paramsTable tbody tr,
+#paramsTable tbody td,
+#timelineTable tbody tr,
+#timelineTable tbody td {
+  height: 46px;
+}
+
+#paramsTable tfoot tr,
+#paramsTable tfoot td,
+#timelineTable tfoot tr,
+#timelineTable tfoot td {
+  height: 42px;
+}
+
+#paramsTable th,
+#paramsTable td,
+#timelineTable th,
+#timelineTable td {
+  border-bottom: 1px solid #e2e8f0;
+  vertical-align: middle;
+  box-sizing: border-box;
+  padding: 0;
+}
+
+#paramsTable th,
+#paramsTable td {
+  border-right: 1px solid #e2e8f0;
+}
+
+#paramsTable th:last-child,
+#paramsTable td:last-child {
+  border-right: none;
+}
+
+#timelineTable th,
+#timelineTable td {
+  border-right: 1px solid #e2e8f0;
+}
+
+#paramsTable thead th,
+#timelineTable thead th {
+  border-bottom: 1px solid #cbd5e1;
+}
+
+#paramsTable tfoot td,
+#timelineTable tfoot td {
+  border-top: 1px solid #cbd5e1;
+  border-bottom: none;
+}
+
+#paramsTable tfoot td#queueFooterLabel {
+  padding-right: 14px;
+}
+
+/* Fixed parameter column widths */
+.col-proc {
+  width: 60px;
+  min-width: 60px;
+  max-width: 60px;
+}
+
+.col-param {
+  width: 74px;
+  min-width: 74px;
+  max-width: 74px;
+}
+
+.col-action {
+  width: 36px;
+  min-width: 36px;
+  max-width: 36px;
+}
+
+/* Timeline tick cells */
+.tick-col {
+  position: relative;
+  width: var(--tick-w, 40px);
+  min-width: var(--tick-w, 40px);
+  max-width: var(--tick-w, 40px);
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  user-select: none;
+  cursor: pointer;
+  transition: background-color 0.1s ease, opacity 0.15s ease;
+}
+
+/* Full-cell Hugging Opening '[' (Arrival) and Closing ']' (Completion) Brackets */
+.tick-col.cell-arrival::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  border-left: 3px solid currentColor;
+  border-top: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tick-col.cell-finish::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+  border-right: 3px solid currentColor;
+  border-top: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.tick-header {
+  width: var(--tick-w, 40px);
+  min-width: var(--tick-w, 40px);
+  max-width: var(--tick-w, 40px);
+  height: 38px;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.75rem;
+  font-weight: 700;
+  background-color: #f8fafc;
+  color: #475569;
+  user-select: none;
+  cursor: pointer;
+  transition: background-color 0.1s ease, color 0.1s ease;
+}
+
+.tick-header:hover {
+  background-color: #e0e7ff;
+  color: #3730a3;
+}
+
+/* Matrix inline number inputs */
+.matrix-input {
+  width: 56px;
+  height: 30px;
+  margin: 0 auto;
+  display: block;
+  text-align: center;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  border-radius: 7px;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease, background-color 0.12s ease;
+}
+
+.matrix-input:hover {
+  background-color: #ffffff;
+  border-color: #94a3b8;
+}
+
+.matrix-input:focus {
+  outline: none;
+  background-color: #ffffff;
+  border-color: #4f46e5;
+  box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.18);
+}
+
+/* Continuous Single-Rectangle Playhead Overlay */
+.playhead-overlay {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--active-tick, 0) * var(--tick-w, 40px));
+  width: var(--tick-w, 40px);
+  border: 2px solid #4f46e5;
+  background: linear-gradient(
+    to bottom,
+    transparent 38px,
+    rgba(99, 102, 241, 0.09) 38px
+  );
+  box-sizing: border-box;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.active-header-cell {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  border-right-color: #4f46e5 !important;
+  border-bottom-color: #4f46e5 !important;
+}
+
+/* Masked future ticks when progressive reveal is active */
+.tick-masked {
+  opacity: 0.25;
+}
+
+/* Process color tokens */
+.proc-bg-A { background-color: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+.proc-bg-B { background-color: #dcfce7; color: #15803d; border-color: #86efac; }
+.proc-bg-C { background-color: #fef3c7; color: #b45309; border-color: #fde047; }
+.proc-bg-D { background-color: #f3e8ff; color: #7e22ce; border-color: #d8b4fe; }
+.proc-bg-E { background-color: #ffe4e6; color: #be123c; border-color: #fda4af; }
+.proc-bg-F { background-color: #ffedd5; color: #c2410c; border-color: #fdba74; }
+.proc-bg-G { background-color: #ccfbf1; color: #0f766e; border-color: #5eead4; }
+.proc-bg-H { background-color: #ede9fe; color: #5b21b6; border-color: #c4b5fd; }
+.proc-bg-I { background-color: #fce7f3; color: #9d174d; border-color: #f9a8d4; }
+.proc-bg-J { background-color: #ecfccb; color: #3f6212; border-color: #bef264; }
+
+@media (max-width: 640px) {
+  #timelineTableWrapper {
+    --tick-w: 36px;
+  }
+
+  .col-proc {
+    width: 46px;
+    min-width: 46px;
+    max-width: 46px;
+  }
+
+  .col-param {
+    width: 58px;
+    min-width: 58px;
+    max-width: 58px;
+  }
+
+  .col-action {
+    width: 30px;
+    min-width: 30px;
+    max-width: 30px;
+  }
+
+  .matrix-input {
+    width: 46px;
+    height: 28px;
+    font-size: 0.75rem;
+  }
+
+  .tick-col {
+    font-size: 0.76rem;
+  }
+
+  .tick-header {
+    font-size: 0.72rem;
+  }
+}
